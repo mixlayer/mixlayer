@@ -1,0 +1,15 @@
+[workspace] 
+
+members = [ 
+  "cli",
+  "lib",
+  "graph", 
+  "runtime",
+
+  "examples/names",
+]
+
+[workspace.dependencies] 
+anyhow = "1.0"
+bytes = "1.2.1"
+serde = "1.0.145"

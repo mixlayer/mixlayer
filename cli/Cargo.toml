@@ -1,0 +1,12 @@
+[package]
+name = "valence-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.0.18", features = ["derive"] }
+anyhow = { workspace = true }
+
+[[bin]]
+name = "valence"
+path = "src/main.rs"
