@@ -5,6 +5,7 @@ members = [
   "lib",
   "graph", 
   "runtime",
+  "runtime-ffi",
 
   "examples/names",
 ]

@@ -19,26 +19,33 @@ pub struct VEdge {
     pub dest_port: u16,
 }
 
-pub struct VGraph {
-    nodes: HashMap<VNodeId, Box<dyn VNode>>,
+pub struct VGraphTopology {
     labels: HashMap<VNodeId, String>,
     edges: HashMap<VNodeId, HashMap<VNodeId, HashSet<VEdge>>>,
     source_ids: HashSet<VNodeId>,
+}
+
+pub struct VGraph {
+    nodes: HashMap<VNodeId, Box<dyn VNode>>,
+    topo: VGraphTopology,
 }
 
 impl VGraph {
     pub fn new() -> Self {
         Self {
             nodes: HashMap::new(),
-            labels: HashMap::new(),
-            edges: HashMap::new(),
-            source_ids: HashSet::new(),
+            topo: VGraphTopology {
+                labels: HashMap::new(),
+                edges: HashMap::new(),
+                source_ids: HashSet::new(),
+            },
         }
     }
 
     /// Returns any node ids that output directly into the specified node id
     pub fn upstream_edges(&self, node_id: &VNodeId) -> Vec<VEdge> {
-        self.edges
+        self.topo
+            .edges
             .iter()
             .flat_map(|(_k, v)| v.get(node_id))
             .flatten()
@@ -48,7 +55,7 @@ impl VGraph {
 
     // Returns all direct edges originating from node_id
     pub fn downstream_edges(&self, node_id: &VNodeId) -> Vec<VEdge> {
-        if let Some(edges) = self.edges.get(node_id) {
+        if let Some(edges) = self.topo.edges.get(node_id) {
             edges.iter().map(|(_, es)| es.clone()).flatten().collect()
         } else {
             vec![]
@@ -82,7 +89,7 @@ impl VGraph {
         }
 
         let mut out = Vec::new();
-        inner(&self.source_ids, &self.edges, &mut out);
+        inner(&self.topo.source_ids, &self.topo.edges, &mut out);
         out
     }
 
@@ -91,15 +98,15 @@ impl VGraph {
     }
 
     pub fn node_label(&self, node_id: &VNodeId) -> Option<&str> {
-        self.labels.get(node_id).map(|s| s.as_str())
+        self.topo.labels.get(node_id).map(|s| s.as_str())
     }
 
     fn insert_edge(&mut self, edge: VEdge) -> () {
-        if self.edges.get(&edge.source_node_id).is_none() {
-            self.edges.insert(edge.source_node_id, HashMap::new());
+        if self.topo.edges.get(&edge.source_node_id).is_none() {
+            self.topo.edges.insert(edge.source_node_id, HashMap::new());
         }
 
-        let edge_map = self.edges.get_mut(&edge.source_node_id).unwrap();
+        let edge_map = self.topo.edges.get_mut(&edge.source_node_id).unwrap();
 
         if edge_map.get(&edge.dest_node_id).is_none() {
             edge_map.insert(edge.dest_node_id, HashSet::new());
@@ -121,7 +128,7 @@ impl VGraph {
         let node_label = format!("{}[{}]", node_type_name, next_id);
 
         self.nodes.insert(next_id, Box::new(node));
-        self.labels.insert(next_id, node_label);
+        self.topo.labels.insert(next_id, node_label);
 
         if let Some(upstream_ids) = upstream_ids {
             for (upstream_id, upstream_port, dest_port) in upstream_ids {
@@ -145,7 +152,7 @@ impl VGraph {
     ) -> VNodeRef<(), T> {
         let node_id = self.insert(source_node, None);
 
-        self.source_ids.insert(node_id);
+        self.topo.source_ids.insert(node_id);
 
         VNodeRef::<(), T> {
             node_id,

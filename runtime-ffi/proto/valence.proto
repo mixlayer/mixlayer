@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package valence; 
+
+// defines 
+// * connections between node identifiers 
+// * metadata for nodes
+message VGraphTopologyProto { 
+  map<uint32, VNodeInfo> metadata = 1;
+  repeated VEdge edges = 2;
+}
+
+message VNodeInfo { 
+  VNodeType node_type = 1; 
+  string label = 2; 
+}
+
+enum VNodeType { 
+  NODE_TYPE_UNKNOWN = 0; 
+  NODE_TYPE_SOURCE = 1; 
+  NODE_TYPE_SINK = 2; 
+  NODE_TYPE_TRANSFORM = 3;
+  NODE_TYPE_JOIN = 4;
+}
+
+message VEdgeCollection { 
+  repeated VEdge edges = 1;
+}
+
+message VEdge { 
+  uint32 source_node_id = 1; 
+  uint32 source_port = 2; 
+  uint32 dest_node_id = 3; 
+  uint32 dest_port = 4;
+}
