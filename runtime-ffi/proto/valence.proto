@@ -5,14 +5,15 @@ package valence;
 // defines 
 // * connections between node identifiers 
 // * metadata for nodes
-message VGraphTopologyProto { 
+message VGraphProto { 
   map<uint32, VNodeInfo> metadata = 1;
-  repeated VEdge edges = 2;
+  repeated VEdgeProto edges = 2;
 }
 
 message VNodeInfo { 
-  VNodeType node_type = 1; 
-  string label = 2; 
+  uint32 node_id = 1;
+  VNodeType node_type = 2; 
+  string node_operation = 3; 
 }
 
 enum VNodeType { 
@@ -23,13 +24,22 @@ enum VNodeType {
   NODE_TYPE_JOIN = 4;
 }
 
-message VEdgeCollection { 
-  repeated VEdge edges = 1;
+message VEdgeProto { 
+  uint32 source_node_id = 1; 
+  uint32 source_output_port = 2; 
+  uint32 dest_input_port = 3;
+  uint32 dest_node_id = 4; 
 }
 
-message VEdge { 
-  uint32 source_node_id = 1; 
-  uint32 source_port = 2; 
-  uint32 dest_node_id = 3; 
-  uint32 dest_port = 4;
+message VNodeCtxProto { 
+  map<uint32, VNodeInputProto> inputs = 1; 
+  map<uint32, VNodeOutputProto> outputs = 2; 
+}
+
+message VNodeOutputProto { 
+  repeated VEdgeProto edges = 1; 
+}
+
+message VNodeInputProto { 
+  repeated VEdgeProto edges = 1; 
 }

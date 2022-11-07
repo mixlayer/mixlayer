@@ -13,7 +13,7 @@ pub trait VTransform: VNode {
     type Input: VData;
     type Output: VData;
 
-    fn recv(&mut self, ctx: &mut VNodeCtx) -> Option<Frame<Self::Input>> {
+    fn recv(&self, ctx: &mut VNodeCtx) -> Option<Frame<Self::Input>> {
         if let Some(data) = ctx.recv(0) {
             Some(Self::Input::from_buffer_frame(data))
         } else {
@@ -21,7 +21,7 @@ pub trait VTransform: VNode {
         }
     }
 
-    fn send(&mut self, ctx: &mut VNodeCtx, data: Frame<Self::Output>) -> () {
+    fn send(&self, ctx: &mut VNodeCtx, data: Frame<Self::Output>) -> () {
         let data = data.flat_map(|d| d.into_buffer_frame().unwrap());
         ctx.send(0, data);
     }

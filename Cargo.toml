@@ -6,8 +6,7 @@ members = [
   "graph", 
   "runtime",
   "runtime-ffi",
-
-  "examples/names",
+  "data",
 ]
 
 [workspace.dependencies] 

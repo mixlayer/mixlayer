@@ -2,8 +2,8 @@ use crate::graph::{VNode, VNodeCtx};
 use crate::{Frame, VData, KV};
 use std::marker::PhantomData;
 
-pub const LEFT_INPUT: u16 = 0;
-pub const RIGHT_INPUT: u16 = 1;
+pub const LEFT_INPUT: u32 = 0;
+pub const RIGHT_INPUT: u32 = 1;
 
 pub trait VJoin: VNode {
     type K: VData + PartialEq;
@@ -11,7 +11,7 @@ pub trait VJoin: VNode {
     type RV: VData;
     type Output: VData;
 
-    fn recv_left(&mut self, ctx: &mut VNodeCtx) -> Option<Frame<KV<Self::K, Self::LV>>> {
+    fn recv_left(&self, ctx: &mut VNodeCtx) -> Option<Frame<KV<Self::K, Self::LV>>> {
         if let Some(data) = ctx.recv(LEFT_INPUT) {
             Some(KV::from_buffer_frame(data))
         } else {
@@ -19,7 +19,7 @@ pub trait VJoin: VNode {
         }
     }
 
-    fn recv_right(&mut self, ctx: &mut VNodeCtx) -> Option<Frame<KV<Self::K, Self::RV>>> {
+    fn recv_right(&self, ctx: &mut VNodeCtx) -> Option<Frame<KV<Self::K, Self::RV>>> {
         if let Some(data) = ctx.recv(RIGHT_INPUT) {
             Some(KV::from_buffer_frame(data))
         } else {

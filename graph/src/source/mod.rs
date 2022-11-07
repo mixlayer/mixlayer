@@ -39,7 +39,3 @@ impl<V: VData> VecSource<V> {
 pub fn vec_source<V: VData>(data: Vec<V>) -> VecSource<V> {
     VecSource::new(data)
 }
-
-// pub fn file_source<P: AsRef<Path>>(f: P) -> Result<fs::FsLineSource, std::io::Error> {
-//     Ok(fs::FsLineSource::new(f)?)
-// }

@@ -5,18 +5,16 @@ use std::{
 
 use bytes::Bytes;
 
-use crate::{
-    channel::OutputChannel, Frame, InputChannel, VData, VLeftJoin, VSink, VSource, VTransform, KV,
-};
+use crate::{Frame, InputChannel, OutputChannel, VData, VLeftJoin, VSink, VSource, VTransform, KV};
 
-pub type VNodeId = usize;
+pub type VNodeId = u32;
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct VEdge {
     pub source_node_id: VNodeId,
-    pub source_port: u16,
+    pub source_port: u32,
     pub dest_node_id: VNodeId,
-    pub dest_port: u16,
+    pub dest_port: u32,
 }
 
 pub struct VGraphTopology {
@@ -26,7 +24,7 @@ pub struct VGraphTopology {
 }
 
 pub struct VGraph {
-    nodes: HashMap<VNodeId, Box<dyn VNode>>,
+    nodes: HashMap<VNodeId, Box<dyn VNode + Sync + Send>>,
     topo: VGraphTopology,
 }
 
@@ -40,6 +38,21 @@ impl VGraph {
                 source_ids: HashSet::new(),
             },
         }
+    }
+
+    pub fn edges<'a>(&'a self) -> Box<dyn Iterator<Item = &'a VEdge> + 'a> {
+        let it = self
+            .topo
+            .edges
+            .iter()
+            .map(|(_, v)| v.iter().map(|(_, v)| v.iter()).flatten())
+            .flatten();
+
+        Box::new(it)
+    }
+
+    pub fn node_ids<'a>(&'a self) -> Box<dyn Iterator<Item = VNodeId> + 'a> {
+        Box::new(self.topo.labels.keys().map(|k| *k))
     }
 
     /// Returns any node ids that output directly into the specified node id
@@ -66,7 +79,7 @@ impl VGraph {
     // TODO this topological sort is probably suboptimal for dataflow, inspect further
     pub fn sort_from_sources(&self) -> Vec<VNodeId> {
         pub fn inner(
-            node_ids: &HashSet<usize>,
+            node_ids: &HashSet<VNodeId>,
             edges: &HashMap<VNodeId, HashMap<VNodeId, HashSet<VEdge>>>,
             out: &mut Vec<VNodeId>,
         ) {
@@ -80,7 +93,7 @@ impl VGraph {
             for node_id in node_ids {
                 match edges.get(node_id) {
                     Some(es) => {
-                        let ks: HashSet<usize> = es.keys().map(|k| *k).collect();
+                        let ks: HashSet<VNodeId> = es.keys().map(|k| *k).collect();
                         inner(&ks, edges, out)
                     }
                     None => (),
@@ -93,8 +106,12 @@ impl VGraph {
         out
     }
 
-    pub fn node_mut(&mut self, node_id: &VNodeId) -> Option<&mut Box<dyn VNode>> {
+    pub fn node_mut(&mut self, node_id: &VNodeId) -> Option<&mut Box<dyn VNode + Sync + Send>> {
         self.nodes.get_mut(node_id)
+    }
+
+    pub fn node(&self, node_id: &VNodeId) -> Option<&Box<dyn VNode + Sync + Send>> {
+        self.nodes.get(node_id)
     }
 
     pub fn node_label(&self, node_id: &VNodeId) -> Option<&str> {
@@ -117,12 +134,12 @@ impl VGraph {
         edge_set.insert(edge);
     }
 
-    pub fn insert<N: VNode + 'static>(
+    pub fn insert<N: VNode + Sync + Send + 'static>(
         &mut self,
         node: N,
-        upstream_ids: Option<&[(VNodeId, u16, u16)]>,
+        upstream_ids: Option<&[(VNodeId, u32, u32)]>,
     ) -> VNodeId {
-        let next_id = self.nodes.len();
+        let next_id = self.nodes.len() as u32;
 
         let node_type_name = std::any::type_name::<N>();
         let node_label = format!("{}[{}]", node_type_name, next_id);
@@ -146,7 +163,7 @@ impl VGraph {
         next_id
     }
 
-    pub fn source<T: VData, S: VSource<Output = T> + 'static>(
+    pub fn source<T: VData, S: VSource<Output = T> + Sync + Send + 'static>(
         &mut self,
         source_node: S,
     ) -> VNodeRef<(), T> {
@@ -193,7 +210,7 @@ pub struct VNodeRef<In, Out> {
 }
 
 impl<In, Out: VData> VNodeRef<In, Out> {
-    pub fn map<MapO: VData, F: Fn(Out) -> MapO + 'static>(
+    pub fn map<MapO: VData, F: Fn(Out) -> MapO + Sync + Send + 'static>(
         &self,
         g: &mut VGraph,
         f: F,
@@ -201,7 +218,7 @@ impl<In, Out: VData> VNodeRef<In, Out> {
         self.transform(g, crate::transform::map(f))
     }
 
-    pub fn transform<TO, T: VTransform<Input = Out, Output = TO> + 'static>(
+    pub fn transform<TO, T: VTransform<Input = Out, Output = TO> + Sync + Send + 'static>(
         &self,
         g: &mut VGraph,
         transform: T,
@@ -215,7 +232,7 @@ impl<In, Out: VData> VNodeRef<In, Out> {
         }
     }
 
-    pub fn sink<S: VSink<Input = Out> + 'static>(
+    pub fn sink<S: VSink<Input = Out> + Sync + Send + 'static>(
         &self,
         g: &mut VGraph,
         sink: S,
@@ -235,12 +252,20 @@ pub trait VNode {
 }
 
 pub struct VNodeCtx {
-    pub(crate) outputs: HashMap<u16, Output>,
-    pub(crate) inputs: HashMap<u16, Input>,
+    //TODO make private
+    pub outputs: HashMap<u32, Output>,
+    pub inputs: HashMap<u32, Input>,
 }
 
 impl VNodeCtx {
-    pub(crate) fn send(&mut self, output_idx: u16, data: Frame<Bytes>) -> () {
+    pub fn new() -> Self {
+        Self {
+            outputs: HashMap::new(),
+            inputs: HashMap::new(),
+        }
+    }
+
+    pub(crate) fn send(&mut self, output_idx: u32, data: Frame<Bytes>) -> () {
         if let Some(output) = self.outputs.get_mut(&output_idx) {
             output.send(data)
         } else {
@@ -249,7 +274,7 @@ impl VNodeCtx {
         }
     }
 
-    pub(crate) fn recv(&mut self, input_idx: u16) -> Option<Frame<Bytes>> {
+    pub(crate) fn recv(&mut self, input_idx: u32) -> Option<Frame<Bytes>> {
         if let Some(input) = self.inputs.get_mut(&input_idx) {
             input.recv()
         } else {
@@ -260,7 +285,7 @@ impl VNodeCtx {
 }
 
 pub struct Output {
-    pub(crate) output_chs: Vec<Box<dyn OutputChannel>>,
+    pub output_chs: Vec<Box<dyn OutputChannel>>,
 }
 
 impl Output {
@@ -272,7 +297,7 @@ impl Output {
 }
 
 pub struct Input {
-    pub(crate) input_ch: Option<Box<dyn InputChannel>>,
+    pub input_ch: Option<Box<dyn InputChannel>>,
 }
 
 impl Input {

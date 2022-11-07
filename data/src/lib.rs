@@ -1,32 +1,11 @@
 use bytes::Bytes;
 use std::fmt::Debug;
 
-#[derive(Debug, Clone)]
-pub enum Frame<T> {
-    Error, //TODO error details
-    Data(T),
-    End,
-}
+mod channel;
 
-impl<T> Frame<T> {
-    pub fn map<U, F: Fn(T) -> U>(self, f: F) -> Frame<U> {
-        match self {
-            Frame::Data(d) => Frame::Data(f(d)),
-            Frame::Error => Frame::Error,
-            Frame::End => Frame::End,
-        }
-    }
+pub use channel::{InputChannel, OutputChannel};
 
-    pub fn flat_map<U, F: Fn(T) -> Frame<U>>(self, f: F) -> Frame<U> {
-        match self {
-            Frame::Data(d) => f(d),
-            Frame::Error => Frame::Error,
-            Frame::End => Frame::End,
-        }
-    }
-}
-
-pub trait VData: Debug + Clone + Sized + 'static {
+pub trait VData: Debug + Clone + Sized + Sync + Send + 'static {
     fn from_buffer_frame(frame: Frame<Bytes>) -> Frame<Self>;
     fn into_buffer_frame(self) -> Result<Frame<Bytes>, ()>;
 }
@@ -235,6 +214,74 @@ mod test {
             assert_eq!(data.len(), 16 + 1 + 4);
         } else {
             panic!("frame was not data")
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Frame<T> {
+    Data(T),
+    End,
+    Error, //TODO error details
+}
+
+impl<T> Frame<T> {
+    pub fn map<U, F: Fn(T) -> U>(self, f: F) -> Frame<U> {
+        match self {
+            Frame::Data(d) => Frame::Data(f(d)),
+            Frame::Error => Frame::Error,
+            Frame::End => Frame::End,
+        }
+    }
+
+    pub fn flat_map<U, F: Fn(T) -> Frame<U>>(self, f: F) -> Frame<U> {
+        match self {
+            Frame::Data(d) => f(d),
+            Frame::Error => Frame::Error,
+            Frame::End => Frame::End,
+        }
+    }
+}
+
+impl Frame<Bytes> {
+    //TODO embed some kind of versioning info or use proto?
+    //TODO should probably put type, len information at end to avoid a copy
+    pub fn into_bytes(self) -> Bytes {
+        use bytes::BufMut;
+        let mut out_buf: Vec<u8> = Vec::new();
+
+        match self {
+            Frame::Data(b) => {
+                out_buf.put_u8(0);
+                out_buf.put_u32(b.len() as u32);
+
+                out_buf.put(b);
+            }
+            Frame::End => {
+                out_buf.put_u8(1);
+            }
+            Frame::Error => {
+                out_buf.put_u8(2);
+            }
+        };
+
+        out_buf.into()
+    }
+
+    //TODO result
+    pub fn from_bytes(mut b: Bytes) -> Frame<Bytes> {
+        use bytes::Buf;
+        let ordinal = b.get_u8();
+
+        match ordinal {
+            0 => {
+                let len = b.get_u32() as usize;
+                let buf = b.split_to(len);
+                Frame::Data(buf)
+            }
+            1 => Frame::End,
+            2 => Frame::Error,
+            _ => panic!("invalid frame ordinal in bytes"),
         }
     }
 }
