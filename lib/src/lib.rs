@@ -27,6 +27,11 @@ extern "C" {
     pub fn _valence_edge_channel_send(id: *const ByteBuffer, data: *const ByteBuffer) -> ();
     pub fn _valence_edge_channel_recv(id: *const ByteBuffer) -> *mut ByteBuffer;
 
+    pub fn _valence_unixtime() -> i32;
+}
+
+pub fn valence_unixtime() -> i32 {
+    unsafe { _valence_unixtime() }
 }
 
 #[macro_export]
