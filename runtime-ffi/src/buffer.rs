@@ -5,17 +5,26 @@ use crate::prost::Message;
 #[repr(C)]
 #[derive(Debug)]
 pub struct ByteBuffer {
-    pub data: *mut u8,
+    pub data: *const u8,
     pub len: usize,
 }
 
 impl ByteBuffer {
     pub fn into_vec(self) -> Vec<u8> {
-        unsafe { Vec::from_raw_parts(self.data, self.len, self.len) }
+        unsafe { Vec::from_raw_parts(self.data as *mut u8, self.len, self.len) }
     }
 
     pub fn into_bytes(self) -> Bytes {
         self.into_vec().into()
+    }
+
+    pub fn from_slice(buf: &[u8]) -> Self {
+        let len = buf.len();
+
+        Self {
+            data: buf.as_ptr(),
+            len,
+        }
     }
 }
 

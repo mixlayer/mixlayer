@@ -14,6 +14,7 @@ pub trait VSource: VNode {
 
 pub struct VecSource<V: VData> {
     data: VecDeque<V>,
+    finished: bool,
 }
 
 impl<V: VData> VSource for VecSource<V> {
@@ -22,17 +23,23 @@ impl<V: VData> VSource for VecSource<V> {
 
 impl<V: VData> VNode for VecSource<V> {
     fn tick(&mut self, ctx: &mut VNodeCtx) -> () {
-        if let Some(next) = self.data.pop_back() {
-            self.send(ctx, Frame::Data(next))
-        } else {
-            self.send(ctx, Frame::End);
+        if !self.finished {
+            if let Some(next) = self.data.pop_back() {
+                self.send(ctx, Frame::Data(next))
+            } else {
+                self.finished = true;
+                self.send(ctx, Frame::End);
+            }
         }
     }
 }
 
 impl<V: VData> VecSource<V> {
     pub fn new(data: Vec<V>) -> Self {
-        Self { data: data.into() }
+        Self {
+            data: data.into(),
+            finished: false,
+        }
     }
 }
 

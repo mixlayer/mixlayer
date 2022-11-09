@@ -1,9 +1,14 @@
 use std::collections::HashMap;
 
-use graph::{Frame, Input, InputChannel, Output, OutputChannel, VEdge, VGraph, VNodeId};
+pub mod io;
+pub mod sink;
+pub mod source;
+
 pub use valence_graph as graph;
-use valence_runtime_ffi::protos::{self, VEdgeProto, VGraphProto, VNodeType};
 pub use valence_runtime_ffi::{ByteBuffer, FFIMessage};
+
+use graph::{Frame, Input, InputChannel, Output, OutputChannel, VEdge, VGraph, VNodeId};
+use valence_runtime_ffi::protos::{self, VEdgeProto, VGraphProto, VNodeType};
 
 extern "C" {
     /// Logs a message on the WebAssembly host.
@@ -21,6 +26,7 @@ extern "C" {
     /// * `data` a `ByteBuffer` containing a `Frame` to be sent
     pub fn _valence_edge_channel_send(id: *const ByteBuffer, data: *const ByteBuffer) -> ();
     pub fn _valence_edge_channel_recv(id: *const ByteBuffer) -> *mut ByteBuffer;
+
 }
 
 #[macro_export]

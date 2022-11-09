@@ -3,8 +3,9 @@ name = "valence"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+valence-data = { path = "../data" }
 valence-graph = { path = "../graph" }
 valence-runtime-ffi = { path = "../runtime-ffi" }
+anyhow = { workspace = true }
+http = "0.2.8"
