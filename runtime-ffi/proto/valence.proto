@@ -43,3 +43,32 @@ message VNodeOutputProto {
 message VNodeInputProto { 
   repeated VEdgeProto edges = 1; 
 }
+
+message HttpRequestProto { 
+    HttpMethodProto method = 1; 
+    string url = 2; 
+    repeated HttpHeaderProto headers = 3; 
+
+    //TODO should be a stream 
+    bytes body = 4; 
+}
+
+message HttpResponseProto { 
+  int32 statusCode = 1; 
+  repeated HttpHeaderProto headers = 2; 
+  bytes body = 3; 
+}
+
+message HttpHeaderProto { 
+  string headerName = 1;
+  string headerValue = 2;
+}
+
+//TODO add rest
+enum HttpMethodProto { 
+  HTTP_METHOD_UNKNOWN = 0;
+  HTTP_METHOD_GET = 1;
+  HTTP_METHOD_POST = 2; 
+  HTTP_METHOD_PUT = 3;
+  HTTP_METHOD_PATCH = 4;
+}

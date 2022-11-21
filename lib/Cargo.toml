@@ -9,3 +9,5 @@ valence-graph = { path = "../graph" }
 valence-runtime-ffi = { path = "../runtime-ffi" }
 anyhow = { workspace = true }
 http = "0.2.8"
+# http-serde = "1.1.2"
+serde_json = "1.0.87"

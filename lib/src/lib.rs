@@ -4,6 +4,7 @@ pub mod io;
 pub mod sink;
 pub mod source;
 
+pub use http;
 pub use valence_graph as graph;
 pub use valence_runtime_ffi::{ByteBuffer, FFIMessage};
 
