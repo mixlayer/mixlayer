@@ -1,22 +1,29 @@
 use anyhow::Result;
+use http::HeaderMap;
 use valence_runtime_ffi::ByteBuffer;
 
-use valence_runtime_ffi::protos::{HttpMethodProto, HttpRequestProto, HttpResponseProto};
+use valence_runtime_ffi::protos::{
+    HttpHeaderProto, HttpMethodProto, HttpRequestProto, HttpResponseProto,
+};
 
 extern "C" {
     // fn _valence_http_client_handle(name_buf: *const ByteBuffer) -> i32;
     fn _valence_http_request(handle: i32, request: *const ByteBuffer) -> *mut ByteBuffer;
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct VHttpClient {
+    default_headers: HeaderMap,
     handle: i32,
 }
 
 impl VHttpClient {
-    pub fn new() -> Self {
+    pub fn new(default_headers: Option<HeaderMap>) -> Self {
         //TODO introduce handles that are connected to different HTTP sandbox configs
-        VHttpClient { handle: 0 }
+        VHttpClient {
+            default_headers: default_headers.unwrap_or_default(),
+            handle: 0,
+        }
     }
 
     // pub fn with_name(name: &str) -> Result<Client> {
@@ -32,8 +39,44 @@ impl VHttpClient {
     //     Ok(Client { handle })
     // }
 
+    //TODO make url arg generic over TryInto<Uri>
+    pub fn get(&mut self, url: &str) -> Result<http::Response<Vec<u8>>> {
+        let uri: http::Uri = url.try_into()?;
+        let http_request = http::Request::builder()
+            .uri(uri)
+            .method(http::Method::GET)
+            .body(vec![])?;
+
+        let resp = self.send(http_request)?;
+
+        Ok(resp)
+    }
+
+    //TODO make url arg generic over TryInto<Uri>
+    pub fn post(&mut self, url: &str) -> Result<http::Response<Vec<u8>>> {
+        let uri: http::Uri = url.try_into()?;
+        let http_request = http::Request::builder()
+            .uri(uri)
+            .method(http::Method::GET)
+            .body(vec![])?;
+
+        let resp = self.send(http_request)?;
+
+        Ok(resp)
+    }
+
     pub fn send(&mut self, request: http::Request<Vec<u8>>) -> Result<http::Response<Vec<u8>>> {
         use valence_runtime_ffi::prost::Message;
+
+        let headers: Vec<HttpHeaderProto> = self
+            .default_headers
+            .iter()
+            .chain(request.headers())
+            .map(|(hn, hv)| HttpHeaderProto {
+                header_name: hn.to_string(),
+                header_value: hv.to_str().unwrap().to_owned(),
+            })
+            .collect();
 
         let (parts, body) = request.into_parts();
         let parts_proto = HttpRequestProto {
@@ -45,7 +88,7 @@ impl VHttpClient {
                 _ => Err(anyhow::Error::msg("invalid http method"))?,
             },
             url: parts.uri.to_string(),
-            headers: vec![], //FIXME header support
+            headers,
             body,
         };
 
