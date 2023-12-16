@@ -7,3 +7,4 @@ edition = "2021"
 bytes = { workspace = true }
 serde = { workspace = true }
 valence-data = { path = "../data" }
+log = { workspace = true }

@@ -4,6 +4,7 @@ use std::{
 };
 
 use bytes::Bytes;
+use log::error;
 
 use crate::{Frame, InputChannel, OutputChannel, VData, VLeftJoin, VSink, VSource, VTransform, KV};
 
@@ -24,7 +25,7 @@ pub struct VGraphTopology {
 }
 
 pub struct VGraph {
-    nodes: HashMap<VNodeId, Box<dyn VNode + Sync + Send>>,
+    nodes: HashMap<VNodeId, Box<dyn VNode + Send>>,
     topo: VGraphTopology,
 }
 
@@ -106,11 +107,11 @@ impl VGraph {
         out
     }
 
-    pub fn node_mut(&mut self, node_id: &VNodeId) -> Option<&mut Box<dyn VNode + Sync + Send>> {
+    pub fn node_mut(&mut self, node_id: &VNodeId) -> Option<&mut Box<dyn VNode + Send>> {
         self.nodes.get_mut(node_id)
     }
 
-    pub fn node(&self, node_id: &VNodeId) -> Option<&Box<dyn VNode + Sync + Send>> {
+    pub fn node(&self, node_id: &VNodeId) -> Option<&Box<dyn VNode + Send>> {
         self.nodes.get(node_id)
     }
 
@@ -134,7 +135,7 @@ impl VGraph {
         edge_set.insert(edge);
     }
 
-    pub fn insert<N: VNode + Sync + Send + 'static>(
+    pub fn insert<N: VNode + Send + 'static>(
         &mut self,
         node: N,
         upstream_ids: Option<&[(VNodeId, u32, u32)]>,
@@ -210,6 +211,10 @@ pub struct VNodeRef<In, Out> {
 }
 
 impl<In, Out: VData> VNodeRef<In, Out> {
+    pub fn id(&self) -> VNodeId {
+        self.node_id
+    }
+
     pub fn map<MapO: VData, F: Fn(Out) -> MapO + Sync + Send + 'static>(
         &self,
         g: &mut VGraph,
@@ -245,6 +250,15 @@ impl<In, Out: VData> VNodeRef<In, Out> {
             _out: Default::default(),
         }
     }
+
+    pub fn connect_sink(&self, g: &mut VGraph, sink: &VNodeRef<Out, ()>) -> () {
+        g.insert_edge(VEdge {
+            source_node_id: self.node_id,
+            source_port: 0,
+            dest_node_id: sink.node_id,
+            dest_port: 0,
+        })
+    }
 }
 
 pub trait VNode {
@@ -252,24 +266,30 @@ pub trait VNode {
 }
 
 pub struct VNodeCtx {
+    label: String,
     //TODO make private
     pub outputs: HashMap<u32, Output>,
     pub inputs: HashMap<u32, Input>,
 }
 
 impl VNodeCtx {
-    pub fn new() -> Self {
+    pub fn new(label: String) -> Self {
         Self {
+            label,
             outputs: HashMap::new(),
             inputs: HashMap::new(),
         }
+    }
+
+    pub fn label(&self) -> &str {
+        self.label.as_str()
     }
 
     pub(crate) fn send(&mut self, output_idx: u32, data: Frame<Bytes>) -> () {
         if let Some(output) = self.outputs.get_mut(&output_idx) {
             output.send(data)
         } else {
-            println!("invalid output index"); //TODO return error
+            error!("invalid output index"); //TODO return error
             ()
         }
     }
@@ -278,7 +298,7 @@ impl VNodeCtx {
         if let Some(input) = self.inputs.get_mut(&input_idx) {
             input.recv()
         } else {
-            println!("invalid input index"); //TODO return error
+            error!("invalid input index"); //TODO return error
             None
         }
     }
@@ -297,15 +317,26 @@ impl Output {
 }
 
 pub struct Input {
-    pub input_ch: Option<Box<dyn InputChannel>>,
+    // input channels associated with this input,
+    // there is typically one input channel per edge in the graph
+    input_chs: Vec<Box<dyn InputChannel>>,
 }
 
 impl Input {
+    pub fn new(input_chs: Vec<Box<dyn InputChannel>>) -> Self {
+        Self { input_chs }
+    }
+
     pub fn recv(&mut self) -> Option<Frame<Bytes>> {
-        if let Some(output) = self.input_ch.as_mut() {
-            output.recv()
-        } else {
-            None
+        //find the first input that has a Frame waiting and return it
+        //TODO we might want to implement some kind of round robin/fairness scheme here
+        //  but it's made difficult beacuse this state is reconstructed for every call to tick()
+        for ch in self.input_chs.iter_mut() {
+            if let Some(frame) = ch.recv() {
+                return Some(frame);
+            }
         }
+
+        None
     }
 }

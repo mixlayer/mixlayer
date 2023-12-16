@@ -1,15 +1,10 @@
-[workspace] 
+[workspace]
+resolver = "2"
 
-members = [ 
-  "cli",
-  "lib",
-  "graph", 
-  "runtime",
-  "runtime-ffi",
-  "data",
-]
+members = ["cli", "lib", "graph", "runtime", "runtime-ffi", "data", "lib-macros"]
 
-[workspace.dependencies] 
+[workspace.dependencies]
 anyhow = "1.0"
 bytes = "1.2.1"
 serde = "1.0.145"
+log = "0.4.20"

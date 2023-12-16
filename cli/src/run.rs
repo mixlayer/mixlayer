@@ -35,12 +35,12 @@ pub fn handle_run(run: RunCommand) -> Result<()> {
 
     // create_output_dir(&run.base_path)?;
     let fs = valence_runtime::LocalFilesystem::new(run.base_path)?;
-    let mut session = VSession::new(&app_wasm_binary, fs)?;
+    // let mut session = VSession::new(&app_wasm_binary, fs, |_l| Ok(()))?;
 
     // let graph = session.export_graph()?;
     // dbg!(graph);
 
-    session.run()?;
+    // session.run()?;
 
     Ok(())
 }

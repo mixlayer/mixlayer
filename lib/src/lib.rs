@@ -1,15 +1,21 @@
 use std::collections::HashMap;
 
 pub mod io;
+pub mod mixdb;
 pub mod sink;
 pub mod source;
 
 pub use http;
+use log::{debug, error};
 pub use valence_graph as graph;
 pub use valence_runtime_ffi::{ByteBuffer, FFIMessage};
 
-use graph::{Frame, Input, InputChannel, Output, OutputChannel, VEdge, VGraph, VNodeId};
+pub use graph::{Frame, Input, InputChannel, Output, OutputChannel, VEdge, VGraph, VNodeId};
 use valence_runtime_ffi::protos::{self, VEdgeProto, VGraphProto, VNodeType};
+
+pub use valence_macros::builder;
+
+pub use anyhow::Result;
 
 extern "C" {
     /// Logs a message on the WebAssembly host.
@@ -97,24 +103,23 @@ impl InputChannel for FFIEdgeChannel {
 
 #[no_mangle]
 extern "C" fn _valence_tick_node(graph: *mut VGraph, node_id: u32) -> () {
-    // vlog!("tick {}", node_id);
-    let mut graph = unsafe { Box::from_raw(graph) };
+    // debug!("tick node: {}", node_id);
+    let graph = unsafe { Box::leak(Box::from_raw(graph)) };
 
     let inputs = inputs_for_node(&graph, &node_id);
     let outputs = outputs_for_node(&graph, &node_id);
+    let node_label = graph.node_label(&node_id).unwrap().to_owned();
 
     if let Some(node) = graph.node_mut(&node_id) {
-        let mut ctx = graph::VNodeCtx::new();
+        let mut ctx = graph::VNodeCtx::new(node_label);
 
         ctx.inputs = inputs;
         ctx.outputs = outputs;
 
         node.tick(&mut ctx);
     } else {
-        vlog!("node {} not found", node_id);
+        error!("node {} not found", node_id);
     }
-
-    let _ = Box::into_raw(graph);
 }
 
 fn to_edge_proto(ed: &VEdge) -> VEdgeProto {
@@ -157,7 +162,7 @@ extern "C" fn _valence_export_graph(graph: *mut VGraph) -> *const ByteBuffer {
         edges,
     };
 
-    // vlog!("export = {:#?}", export);
+    debug!("constructed graph:\n {:#?}", export);
 
     let buf = FFIMessage(&export).try_into().unwrap();
 
@@ -172,23 +177,16 @@ pub fn edge_channel(edge: &VEdge) -> FFIEdgeChannel {
 fn inputs_for_node(graph: &VGraph, node_id: &VNodeId) -> HashMap<u32, Input> {
     let upstream_edges = graph.upstream_edges(node_id);
 
-    let mut inputs: HashMap<u32, Option<Box<dyn InputChannel>>> = HashMap::new();
+    let mut inputs: HashMap<u32, Vec<Box<dyn InputChannel>>> = HashMap::new();
 
     for edge in upstream_edges {
         let edge_ch: Box<dyn InputChannel> = Box::new(edge_channel(&edge));
-
-        if !inputs.contains_key(&edge.dest_port) {
-            inputs.insert(edge.dest_port, Some(edge_ch));
-        } else {
-            // should panic here? should only be zero or one input channel per input?
-            let ch = inputs.get_mut(&edge.dest_port).unwrap();
-            *ch = Some(edge_ch);
-        }
+        inputs.entry(edge.dest_port).or_insert(vec![]).push(edge_ch);
     }
 
     inputs
         .into_iter()
-        .map(|(k, input_ch)| (k, Input { input_ch }))
+        .map(|(k, input_chs)| (k, Input::new(input_chs)))
         .collect()
 }
 

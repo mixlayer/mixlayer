@@ -1,0 +1,21 @@
+[package]
+name = "valence-macros"
+version = "0.1.0"
+edition = "2021"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+proc-macro = true
+
+[dependencies.proc-macro2]
+version = "1.0.7"
+
+[dependencies.quote]
+version = "1"
+
+[dependencies.syn]
+version = "2.0"
+features = ["full"]
+
+[dev-dependencies.valence]
+path = "../lib"

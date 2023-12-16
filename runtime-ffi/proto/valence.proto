@@ -72,3 +72,44 @@ enum HttpMethodProto {
   HTTP_METHOD_PUT = 3;
   HTTP_METHOD_PATCH = 4;
 }
+
+
+//mixdb ffi api 
+
+message MixDbCreateCollectionProto { 
+  string db_name = 1; 
+  string collection = 2; 
+  string element_type = 3; 
+  string id_field = 4; 
+}
+
+message MixDbInsertProto { 
+  string db_name = 1; 
+  string collection = 2; 
+  string json = 3; 
+}
+
+enum MxlEmbeddingModelProto { 
+  Unknown = 0;
+  OpenAIAda002 = 1; 
+}
+
+// Creates a vector index on a collection
+message MixDbCreateVectorIndex { 
+  string db_name = 1; 
+  string collection = 2; 
+  int32 dimensions = 3; 
+}
+
+// Inserts a vector into the vector index
+message MixDbInsertVector { 
+  string collection = 1; 
+  string index_name = 2; 
+  int32 document_id = 3; 
+  string chunk_text = 4;
+  repeated float vector = 5;
+}
+
+message MixDbFinishVectorIndex { 
+  string collection = 1; 
+}
