@@ -6,7 +6,9 @@ use std::{
 use bytes::Bytes;
 use log::error;
 
-use crate::{Frame, InputChannel, OutputChannel, VData, VLeftJoin, VSink, VSource, VTransform, KV};
+use crate::{
+    transform, Frame, InputChannel, OutputChannel, VData, VLeftJoin, VSink, VSource, VTransform, KV,
+};
 
 pub type VNodeId = u32;
 
@@ -223,6 +225,14 @@ impl<In, Out: VData> VNodeRef<In, Out> {
         self.transform(g, crate::transform::map(f))
     }
 
+    pub fn filter<F: Fn(&Out) -> bool + Send + Sync + 'static>(
+        &self,
+        g: &mut VGraph,
+        f: F,
+    ) -> VNodeRef<Out, Out> {
+        self.transform(g, crate::transform::filter(f))
+    }
+
     pub fn transform<TO, T: VTransform<Input = Out, Output = TO> + Sync + Send + 'static>(
         &self,
         g: &mut VGraph,
@@ -261,6 +271,12 @@ impl<In, Out: VData> VNodeRef<In, Out> {
     }
 }
 
+impl<In, Out: VData> VNodeRef<In, Vec<Out>> {
+    pub fn flatten(&self, g: &mut VGraph) -> VNodeRef<Vec<Out>, Out> {
+        self.transform(g, transform::flatten())
+    }
+}
+
 pub trait VNode {
     fn tick(&mut self, ctx: &mut VNodeCtx) -> ();
 }
@@ -289,7 +305,7 @@ impl VNodeCtx {
         if let Some(output) = self.outputs.get_mut(&output_idx) {
             output.send(data)
         } else {
-            error!("invalid output index"); //TODO return error
+            error!("invalid output index :{}", output_idx); //TODO return error
             ()
         }
     }

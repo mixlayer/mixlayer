@@ -3,7 +3,6 @@
 use anyhow::{Context, Result};
 use clap::Args;
 use std::path::PathBuf;
-use valence_runtime::VSession;
 
 use std::fs;
 

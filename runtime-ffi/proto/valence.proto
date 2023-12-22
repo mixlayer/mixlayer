@@ -89,10 +89,6 @@ message MixDbInsertProto {
   string json = 3; 
 }
 
-enum MxlEmbeddingModelProto { 
-  Unknown = 0;
-  OpenAIAda002 = 1; 
-}
 
 // Creates a vector index on a collection
 message MixDbCreateVectorIndex { 
@@ -112,4 +108,34 @@ message MixDbInsertVector {
 
 message MixDbFinishVectorIndex { 
   string collection = 1; 
+}
+
+message CreateEmbeddingRequest { 
+  string input = 1; 
+  EmbeddingModelProto model = 2;
+}
+
+message CreateEmbeddingResponse { 
+  repeated float embedding = 1;
+}
+
+enum EmbeddingModelProto { 
+  UnknownEmbeddingModel = 0;
+  OpenAIAda002 = 1; 
+}
+
+message ChatCompletionRequest { 
+  string prompt = 1; 
+  ChatCompletionModelProto model = 2; 
+}
+
+message ChatCompletionResponse { 
+  string message = 1; 
+}
+
+enum ChatCompletionModelProto { 
+  UnknownChatCompletionModel = 0; 
+  OpenAIGpt4Turbo = 1; 
+  OpenAIGpt35Turbo = 2; 
+  OpenAIGpt4VisionPreview = 3; 
 }

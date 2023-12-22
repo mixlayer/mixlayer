@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+pub mod ai;
 pub mod io;
 pub mod mixdb;
 pub mod sink;
@@ -128,6 +129,14 @@ fn to_edge_proto(ed: &VEdge) -> VEdgeProto {
         source_output_port: ed.source_port as u32,
         dest_input_port: ed.dest_port as u32,
         dest_node_id: ed.dest_node_id,
+    }
+}
+
+/// allows the runtime to free a graph so the Drop traits run on all of the nodes
+#[no_mangle]
+extern "C" fn _valence_free_graph(graph: *mut VGraph) -> () {
+    unsafe {
+        drop(Box::from_raw(graph));
     }
 }
 

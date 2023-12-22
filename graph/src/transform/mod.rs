@@ -1,3 +1,5 @@
+mod filter;
+mod flatten;
 mod groupby;
 mod map;
 
@@ -6,6 +8,7 @@ use std::{fmt::Display, marker::PhantomData};
 use crate::graph::{VNode, VNodeCtx};
 use crate::{Frame, VData};
 
+use self::filter::FilterXform;
 use self::groupby::GroupByKey;
 use self::map::MapXform;
 
@@ -154,4 +157,20 @@ where
     F: Fn(I) -> O,
 {
     map::MapXform::new(f)
+}
+
+pub fn filter<I, F>(f: F) -> FilterXform<I, F>
+where
+    I: VData,
+    F: Fn(&I) -> bool,
+{
+    filter::FilterXform::new(f)
+    // map::MapXform::new(move |i| if f(&i) { Some(i) } else { None })
+}
+
+pub fn flatten<I>() -> flatten::FlattenXform<I>
+where
+    I: VData,
+{
+    flatten::FlattenXform::new()
 }
