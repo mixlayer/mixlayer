@@ -36,7 +36,7 @@ where
     fn tick(&mut self, ctx: &mut crate::graph::VNodeCtx) -> () {
         if let Some(next) = self.recv(ctx) {
             match next {
-                crate::Frame::Error => todo!(),
+                crate::Frame::Error => (), //TODO
                 crate::Frame::Data(data) => {
                     for d in data {
                         self.send(ctx, Frame::Data(d))

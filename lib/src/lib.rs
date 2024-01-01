@@ -11,7 +11,9 @@ use log::{debug, error};
 pub use valence_graph as graph;
 pub use valence_runtime_ffi::{ByteBuffer, FFIMessage};
 
-pub use graph::{Frame, Input, InputChannel, Output, OutputChannel, VEdge, VGraph, VNodeId};
+pub use graph::{
+    Frame, Input, InputChannel, Output, OutputChannel, VEdge, VGraph, VNodeId, VNodeRef,
+};
 use valence_runtime_ffi::protos::{self, VEdgeProto, VGraphProto, VNodeType};
 
 pub use valence_macros::builder;

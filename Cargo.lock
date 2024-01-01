@@ -1779,6 +1779,7 @@ dependencies = [
  "anyhow",
  "http",
  "log",
+ "serde",
  "serde_json",
  "valence-data",
  "valence-graph",
@@ -1800,6 +1801,9 @@ name = "valence-data"
 version = "0.1.0"
 dependencies = [
  "bytes",
+ "log",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1809,6 +1813,7 @@ dependencies = [
  "bytes",
  "log",
  "serde",
+ "serde_json",
  "valence-data",
 ]
 

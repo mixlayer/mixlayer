@@ -67,14 +67,14 @@ pub struct MxlCollectionSink {
 }
 
 impl MxlCollectionSink {
-    pub fn new(name: &str) -> Self {
+    pub fn new(name: &str, element_type: &str, id_field: &str) -> Self {
         debug!("creating collection {}", name);
 
         let create_proto = MixDbCreateCollectionProto {
             db_name: "default".to_owned(),
             collection: name.to_owned(),
-            element_type: "Content".to_owned(),
-            id_field: "id".to_owned(),
+            element_type: element_type.to_owned(),
+            id_field: id_field.to_owned(),
         };
 
         let create_buf: ByteBuffer = create_proto.encode_to_vec().into();

@@ -1,9 +1,30 @@
 use bytes::Bytes;
+use serde::{de::DeserializeOwned, Serialize};
 use std::fmt::Debug;
 
 mod channel;
 
 pub use channel::{InputChannel, OutputChannel};
+
+pub trait JsonVData:
+    Serialize + DeserializeOwned + Debug + Clone + Sized + Sync + Send + 'static
+{
+}
+
+impl<T> VData for T
+where
+    T: JsonVData,
+{
+    fn from_buffer_frame(frame: Frame<Bytes>) -> Frame<Self> {
+        frame.map(|s| {
+            serde_json::from_slice(&s).unwrap() //FIXME from_buffer_from should return result
+        })
+    }
+
+    fn into_buffer_frame(self) -> Result<Frame<Bytes>, ()> {
+        Ok(Frame::Data(serde_json::to_vec(&self).unwrap().into()))
+    }
+}
 
 pub trait VData: Debug + Clone + Sized + Sync + Send + 'static {
     fn from_buffer_frame(frame: Frame<Bytes>) -> Frame<Self>;
@@ -54,19 +75,22 @@ impl<V: VData> VData for Vec<V> {
         frame.map(|mut buf| {
             let mut out = Vec::new();
 
-            loop {
-                let element_len = buf.get_u32() as usize;
-                let element_bytes = buf.split_to(element_len);
-                let element = V::from_buffer_frame(Frame::Data(element_bytes));
+            // any empty Vec will be 0 bytes
+            if buf.remaining() > 0 {
+                loop {
+                    let element_len = buf.get_u32() as usize;
+                    let element_bytes = buf.split_to(element_len);
+                    let element = V::from_buffer_frame(Frame::Data(element_bytes));
 
-                if let Frame::Data(v) = element {
-                    out.push(v);
-                } else {
-                    panic!("frame expected when reading to vec")
-                }
+                    if let Frame::Data(v) = element {
+                        out.push(v);
+                    } else {
+                        panic!("frame expected when reading to vec")
+                    }
 
-                if buf.remaining() < 4 {
-                    break;
+                    if buf.remaining() < 4 {
+                        break;
+                    }
                 }
             }
 

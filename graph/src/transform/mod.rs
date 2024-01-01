@@ -1,3 +1,4 @@
+mod collect;
 mod filter;
 mod flatten;
 mod groupby;
@@ -173,4 +174,11 @@ where
     I: VData,
 {
     flatten::FlattenXform::new()
+}
+
+pub fn collect<I>() -> collect::CollectXform<I>
+where
+    I: VData,
+{
+    collect::CollectXform::new()
 }

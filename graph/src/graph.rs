@@ -5,6 +5,7 @@ use std::{
 
 use bytes::Bytes;
 use log::error;
+use serde::Serialize;
 
 use crate::{
     transform, Frame, InputChannel, OutputChannel, VData, VLeftJoin, VSink, VSource, VTransform, KV,
@@ -137,6 +138,19 @@ impl VGraph {
         edge_set.insert(edge);
     }
 
+    pub fn sink<T: VData, N: VSink<Input = T> + Send + 'static>(
+        &mut self,
+        sink: N,
+    ) -> VNodeRef<T, ()> {
+        let node_id = self.insert(sink, None);
+
+        VNodeRef::<T, ()> {
+            node_id,
+            _in: Default::default(),
+            _out: Default::default(),
+        }
+    }
+
     pub fn insert<N: VNode + Send + 'static>(
         &mut self,
         node: N,
@@ -225,12 +239,26 @@ impl<In, Out: VData> VNodeRef<In, Out> {
         self.transform(g, crate::transform::map(f))
     }
 
+    //TODO probably put behind a feature so not forced to import serde_json for everyone
+    // or separate crate
+    pub fn to_json(&self, g: &mut VGraph) -> VNodeRef<Out, String>
+    where
+        Out: Serialize,
+    {
+        //FIXME use try_map in future instead
+        self.map(g, |d| serde_json::to_string(&d).unwrap())
+    }
+
     pub fn filter<F: Fn(&Out) -> bool + Send + Sync + 'static>(
         &self,
         g: &mut VGraph,
         f: F,
     ) -> VNodeRef<Out, Out> {
         self.transform(g, crate::transform::filter(f))
+    }
+
+    pub fn collect(&self, g: &mut VGraph) -> VNodeRef<Out, Vec<Out>> {
+        self.transform(g, transform::collect())
     }
 
     pub fn transform<TO, T: VTransform<Input = Out, Output = TO> + Sync + Send + 'static>(
