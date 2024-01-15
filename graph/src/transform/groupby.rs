@@ -75,4 +75,8 @@ where
             }
         }
     }
+
+    fn default_label(&self) -> Option<String> {
+        Some("GroupBy".to_owned())
+    }
 }

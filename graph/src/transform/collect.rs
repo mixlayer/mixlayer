@@ -50,4 +50,8 @@ where
             }
         }
     }
+
+    fn default_label(&self) -> Option<String> {
+        Some("Collect".to_owned())
+    }
 }

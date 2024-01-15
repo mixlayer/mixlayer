@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 prost = "0.11.0"
+serde = { workspace = true, features = ["derive"] }
 
 [build-dependencies]
 prost-build = "0.11.0"

@@ -52,4 +52,8 @@ where
             }
         }
     }
+
+    fn default_label(&self) -> Option<String> {
+        Some("Filter".to_owned())
+    }
 }

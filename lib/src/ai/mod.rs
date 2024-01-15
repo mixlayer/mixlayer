@@ -19,5 +19,6 @@ pub trait ChatCompletionModel {
     fn token_limit(&self) -> u32;
 }
 
+pub use openai::Gpt4;
 pub use openai::Gpt4Turbo;
 pub use openai::OpenAIAda002;

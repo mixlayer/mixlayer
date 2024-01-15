@@ -46,4 +46,8 @@ where
             }
         }
     }
+
+    fn default_label(&self) -> Option<String> {
+        Some("Flatten".to_owned())
+    }
 }

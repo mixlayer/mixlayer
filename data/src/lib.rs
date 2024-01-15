@@ -1,5 +1,5 @@
 use bytes::Bytes;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::fmt::Debug;
 
 mod channel;
@@ -38,6 +38,52 @@ impl VData for String {
 
     fn into_buffer_frame(self) -> Result<Frame<Bytes>, ()> {
         Ok(Frame::Data(self.into_bytes().into()))
+    }
+}
+
+//FIXME in this impl, Some("") will be serialized as None, probably need a prefix byte
+impl<T> VData for Option<T>
+where
+    T: VData,
+{
+    fn from_buffer_frame(frame: Frame<Bytes>) -> Frame<Self> {
+        match frame {
+            Frame::Data(mut d) => {
+                use bytes::Buf;
+
+                let some_none = d.get_u8();
+
+                if some_none == 0 {
+                    Frame::Data(None)
+                } else {
+                    T::from_buffer_frame(Frame::Data(d)).map(|v| Some(v))
+                }
+            }
+            Frame::End => Frame::End,
+            Frame::Error => Frame::Error,
+        }
+    }
+
+    fn into_buffer_frame(self) -> Result<Frame<Bytes>, ()> {
+        use bytes::BufMut;
+        let mut buf = vec![];
+
+        match self {
+            Some(v) => {
+                buf.put_u8(1);
+
+                if let Ok(Frame::Data(element_bytes)) = T::into_buffer_frame(v) {
+                    buf.put(element_bytes);
+                } else {
+                    panic!("element Option<T> serialize fialed")
+                }
+            }
+            None => {
+                buf.put_u8(0);
+            }
+        }
+
+        Ok(Frame::Data(buf.into()))
     }
 }
 
@@ -186,8 +232,6 @@ impl<K: VData, V: VData> VData for KV<K, V> {
                 out.put(&mut key_bytes);
                 out.put(&mut val_bytes);
 
-                println!("wrote = {}", out.len());
-
                 Ok(Frame::Data(out.into()))
             }
             other => panic!("unexpected value when serializing kv: {:?}", other),
@@ -307,5 +351,51 @@ impl Frame<Bytes> {
             2 => Frame::Error,
             _ => panic!("invalid frame ordinal in bytes"),
         }
+    }
+}
+
+/// Newtype that wraps a JSON value guaranteed to be an object
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(transparent)]
+pub struct JsonObject(serde_json::Map<String, serde_json::Value>);
+impl JsonVData for JsonObject {}
+impl JsonObject {
+    pub fn as_map(&self) -> &serde_json::Map<String, serde_json::Value> {
+        &self.0
+    }
+
+    pub fn as_map_mut(&mut self) -> &mut serde_json::Map<String, serde_json::Value> {
+        &mut self.0
+    }
+}
+
+impl TryFrom<serde_json::Value> for JsonObject {
+    type Error = anyhow::Error;
+
+    fn try_from(value: serde_json::Value) -> Result<Self, Self::Error> {
+        match value {
+            serde_json::Value::Object(map) => Ok(JsonObject(map)),
+            _ => Err(anyhow::anyhow!("not a json object")),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(transparent)]
+pub struct JsonValue(serde_json::Value);
+impl JsonVData for JsonValue {}
+impl JsonValue {
+    pub fn as_value(&self) -> &serde_json::Value {
+        &self.0
+    }
+
+    pub fn as_value_mut(&mut self) -> &mut serde_json::Value {
+        &mut self.0
+    }
+}
+
+impl From<serde_json::Value> for JsonValue {
+    fn from(value: serde_json::Value) -> Self {
+        JsonValue(value)
     }
 }

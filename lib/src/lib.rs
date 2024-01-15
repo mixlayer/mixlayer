@@ -7,18 +7,20 @@ pub mod sink;
 pub mod source;
 
 pub use http;
-use log::{debug, error};
 pub use valence_graph as graph;
 pub use valence_runtime_ffi::{ByteBuffer, FFIMessage};
 
 pub use graph::{
-    Frame, Input, InputChannel, Output, OutputChannel, VEdge, VGraph, VNodeId, VNodeRef,
+    Frame, Input, InputChannel, Output, OutputChannel, VEdge, VGraph, VNodeId, VNodeRef, VNodeType,
 };
-use valence_runtime_ffi::protos::{self, VEdgeProto, VGraphProto, VNodeType};
 
+pub use valence_data::{JsonObject, JsonValue};
 pub use valence_macros::builder;
 
 pub use anyhow::Result;
+
+use log::error;
+use valence_runtime_ffi::protos::{self, VEdgeProto, VGraphProto, VNodeTypeProto};
 
 extern "C" {
     /// Logs a message on the WebAssembly host.
@@ -38,10 +40,19 @@ extern "C" {
     pub fn _valence_edge_channel_recv(id: *const ByteBuffer) -> *mut ByteBuffer;
 
     pub fn _valence_unixtime() -> i32;
+
+    pub fn _valence_uuid_v4() -> *mut ByteBuffer;
 }
 
 pub fn valence_unixtime() -> i32 {
     unsafe { _valence_unixtime() }
+}
+
+pub fn valence_uuid_v4() -> String {
+    unsafe {
+        let buf = Box::from_raw(_valence_uuid_v4());
+        String::from_utf8_unchecked(buf.into_vec())
+    }
 }
 
 #[macro_export]
@@ -111,10 +122,10 @@ extern "C" fn _valence_tick_node(graph: *mut VGraph, node_id: u32) -> () {
 
     let inputs = inputs_for_node(&graph, &node_id);
     let outputs = outputs_for_node(&graph, &node_id);
-    let node_label = graph.node_label(&node_id).unwrap().to_owned();
+    // let node_label = graph.node_metadata(&node_id).unwrap().to_owned();
 
     if let Some(node) = graph.node_mut(&node_id) {
-        let mut ctx = graph::VNodeCtx::new(node_label);
+        let mut ctx = graph::VNodeCtx::new();
 
         ctx.inputs = inputs;
         ctx.outputs = outputs;
@@ -159,10 +170,22 @@ extern "C" fn _valence_export_graph(graph: *mut VGraph) -> *const ByteBuffer {
     let nodes: HashMap<u32, protos::VNodeInfo> = graph
         .node_ids()
         .map(|node_id| {
+            let metadata = graph.node_metadata(&node_id).unwrap();
+
+            let node_type = match metadata.node_type {
+                VNodeType::Source => VNodeTypeProto::NodeTypeSource,
+                VNodeType::Transform => VNodeTypeProto::NodeTypeTransform,
+                VNodeType::Sink => VNodeTypeProto::NodeTypeSink,
+                _ => VNodeTypeProto::NodeTypeUnknown,
+            };
+
             let info = protos::VNodeInfo {
                 node_id,
-                node_type: VNodeType::NodeTypeUnknown as i32,
-                node_operation: graph.node_label(&node_id).unwrap().to_owned(),
+                node_type: node_type as i32,
+                node_operation: metadata.operation.clone(),
+                node_label: metadata.label.clone(),
+                input_type: metadata.input_type.clone(),
+                output_type: metadata.output_type.clone(),
             };
             (node_id, info)
         })
@@ -173,7 +196,7 @@ extern "C" fn _valence_export_graph(graph: *mut VGraph) -> *const ByteBuffer {
         edges,
     };
 
-    debug!("constructed graph:\n {:#?}", export);
+    // debug!("constructed graph:\n {:#?}", export);
 
     let buf = FFIMessage(&export).try_into().unwrap();
 

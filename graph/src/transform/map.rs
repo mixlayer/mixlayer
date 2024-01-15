@@ -54,4 +54,8 @@ where
             }
         }
     }
+
+    fn default_label(&self) -> Option<String> {
+        Some("Map".to_owned())
+    }
 }

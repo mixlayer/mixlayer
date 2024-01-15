@@ -7,7 +7,7 @@ pub mod sink;
 pub mod source;
 pub mod transform;
 
-pub use graph::{Input, Output, VEdge, VGraph, VNode, VNodeCtx, VNodeId, VNodeRef};
+pub use graph::{Input, Output, VEdge, VGraph, VNode, VNodeCtx, VNodeId, VNodeRef, VNodeType};
 pub use join::VLeftJoin;
 pub use sink::VSink;
 pub use source::VSource;

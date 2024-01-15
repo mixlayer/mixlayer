@@ -22,9 +22,24 @@ pub struct VEdge {
 }
 
 pub struct VGraphTopology {
-    labels: HashMap<VNodeId, String>,
+    metadata: HashMap<VNodeId, VNodeMetadata>,
     edges: HashMap<VNodeId, HashMap<VNodeId, HashSet<VEdge>>>,
     source_ids: HashSet<VNodeId>,
+}
+
+pub enum VNodeType {
+    Source,
+    Transform,
+    Sink,
+    Join,
+}
+
+pub struct VNodeMetadata {
+    pub operation: String,
+    pub label: Option<String>,
+    pub node_type: VNodeType,
+    pub input_type: String,
+    pub output_type: String,
 }
 
 pub struct VGraph {
@@ -37,7 +52,7 @@ impl VGraph {
         Self {
             nodes: HashMap::new(),
             topo: VGraphTopology {
-                labels: HashMap::new(),
+                metadata: HashMap::new(),
                 edges: HashMap::new(),
                 source_ids: HashSet::new(),
             },
@@ -56,7 +71,7 @@ impl VGraph {
     }
 
     pub fn node_ids<'a>(&'a self) -> Box<dyn Iterator<Item = VNodeId> + 'a> {
-        Box::new(self.topo.labels.keys().map(|k| *k))
+        Box::new(self.topo.metadata.keys().map(|k| *k))
     }
 
     /// Returns any node ids that output directly into the specified node id
@@ -118,8 +133,21 @@ impl VGraph {
         self.nodes.get(node_id)
     }
 
-    pub fn node_label(&self, node_id: &VNodeId) -> Option<&str> {
-        self.topo.labels.get(node_id).map(|s| s.as_str())
+    pub fn node_operation(&self, node_id: &VNodeId) -> Option<&str> {
+        self.topo
+            .metadata
+            .get(node_id)
+            .map(|s| s.operation.as_str())
+    }
+
+    pub fn node_metadata(&self, node_id: &VNodeId) -> Option<&VNodeMetadata> {
+        self.topo.metadata.get(node_id)
+    }
+
+    pub fn label(&mut self, node_id: &VNodeId, label: String) -> () {
+        if let Some(metadata) = self.topo.metadata.get_mut(node_id) {
+            metadata.label = Some(label);
+        }
     }
 
     fn insert_edge(&mut self, edge: VEdge) -> () {
@@ -142,7 +170,7 @@ impl VGraph {
         &mut self,
         sink: N,
     ) -> VNodeRef<T, ()> {
-        let node_id = self.insert(sink, None);
+        let node_id = self.insert::<N::Input, (), _>(sink, None, None, VNodeType::Sink);
 
         VNodeRef::<T, ()> {
             node_id,
@@ -151,18 +179,35 @@ impl VGraph {
         }
     }
 
-    pub fn insert<N: VNode + Send + 'static>(
+    pub fn insert<I, O, N: VNode + Send + 'static>(
         &mut self,
         node: N,
         upstream_ids: Option<&[(VNodeId, u32, u32)]>,
+        label: Option<String>,
+        node_type: VNodeType,
     ) -> VNodeId {
         let next_id = self.nodes.len() as u32;
 
         let node_type_name = std::any::type_name::<N>();
-        let node_label = format!("{}[{}]", node_type_name, next_id);
+
+        let label = label.or_else(|| node.default_label());
+        let operation = format_node_type(node_type_name);
+
+        //TODO `format_node_type` here will probably truncate useful generic type info
+        let input_type = format_node_type(std::any::type_name::<I>());
+        let output_type = format_node_type(std::any::type_name::<O>());
 
         self.nodes.insert(next_id, Box::new(node));
-        self.topo.labels.insert(next_id, node_label);
+
+        let metadata = VNodeMetadata {
+            label,
+            operation,
+            node_type,
+            input_type,
+            output_type,
+        };
+
+        self.topo.metadata.insert(next_id, metadata);
 
         if let Some(upstream_ids) = upstream_ids {
             for (upstream_id, upstream_port, dest_port) in upstream_ids {
@@ -184,7 +229,7 @@ impl VGraph {
         &mut self,
         source_node: S,
     ) -> VNodeRef<(), T> {
-        let node_id = self.insert(source_node, None);
+        let node_id = self.insert::<(), S::Output, _>(source_node, None, None, VNodeType::Source);
 
         self.topo.source_ids.insert(node_id);
 
@@ -210,7 +255,9 @@ impl VGraph {
         let left_edge = (left.node_id, 0, crate::join::LEFT_INPUT);
         let right_edge = (right.node_id, 0, crate::join::RIGHT_INPUT);
 
-        let node_id = self.insert(join, Some(&[left_edge, right_edge]));
+        //TODO figure out how to describe join types in node metadata, using () for now
+        let node_id =
+            self.insert::<(), (), _>(join, Some(&[left_edge, right_edge]), None, VNodeType::Join);
 
         VNodeRef {
             node_id,
@@ -266,7 +313,12 @@ impl<In, Out: VData> VNodeRef<In, Out> {
         g: &mut VGraph,
         transform: T,
     ) -> VNodeRef<Out, TO> {
-        let transform_id = g.insert(transform, Some(&[(self.node_id, 0, 0)]));
+        let transform_id = g.insert::<T::Input, T::Output, _>(
+            transform,
+            Some(&[(self.node_id, 0, 0)]),
+            None,
+            VNodeType::Transform,
+        );
 
         VNodeRef {
             node_id: transform_id,
@@ -280,13 +332,20 @@ impl<In, Out: VData> VNodeRef<In, Out> {
         g: &mut VGraph,
         sink: S,
     ) -> VNodeRef<Out, ()> {
-        let sink_id = g.insert(sink, Some(&[(self.node_id, 0, 0)]));
+        let sink_id =
+            g.insert::<S::Input, (), _>(sink, Some(&[(self.node_id, 0, 0)]), None, VNodeType::Sink);
 
         VNodeRef::<Out, ()> {
             node_id: sink_id,
             _in: Default::default(),
             _out: Default::default(),
         }
+    }
+
+    pub fn label(self, g: &mut VGraph, label: impl AsRef<str>) -> Self {
+        let label = label.as_ref().to_owned();
+        g.label(&self.node_id, label);
+        self
     }
 
     pub fn connect_sink(&self, g: &mut VGraph, sink: &VNodeRef<Out, ()>) -> () {
@@ -306,27 +365,26 @@ impl<In, Out: VData> VNodeRef<In, Vec<Out>> {
 }
 
 pub trait VNode {
+    //TODO probably make this required for node impls
+    fn default_label(&self) -> Option<String> {
+        None
+    }
+
     fn tick(&mut self, ctx: &mut VNodeCtx) -> ();
 }
 
 pub struct VNodeCtx {
-    label: String,
     //TODO make private
     pub outputs: HashMap<u32, Output>,
     pub inputs: HashMap<u32, Input>,
 }
 
 impl VNodeCtx {
-    pub fn new(label: String) -> Self {
+    pub fn new() -> Self {
         Self {
-            label,
             outputs: HashMap::new(),
             inputs: HashMap::new(),
         }
-    }
-
-    pub fn label(&self) -> &str {
-        self.label.as_str()
     }
 
     pub(crate) fn send(&mut self, output_idx: u32, data: Frame<Bytes>) -> () {
@@ -383,4 +441,21 @@ impl Input {
 
         None
     }
+}
+
+pub fn format_node_type(ty: &str) -> String {
+    let generic = ty.split("<").next().unwrap();
+    let parts = generic.split("::");
+    let ty = parts.last().unwrap();
+
+    match ty.split_once("<") {
+        Some((prefix, _)) => match prefix.split("::").last() {
+            Some(ty) => return ty.to_owned(),
+            _ => {}
+        },
+        _ => {}
+    }
+
+    //fall through here and return input if failed
+    ty.to_owned()
 }

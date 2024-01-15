@@ -27,7 +27,6 @@ pub fn read_pdf_pages_text(
 }
 
 /// Reads lines from a file on the local filesystem
-/// Output json is { "file": "<FILENAME>", page: "<PAGE NUMBER>", text: "<PAGE TEXT>" }
 pub struct PdfPageTextSource {
     pdf_path: String,
     pages: VecDeque<ReadPdfPagesPageText>,
@@ -67,6 +66,10 @@ impl VNode for PdfPageTextSource {
         } else {
             self.send(ctx, Frame::End);
         }
+    }
+
+    fn default_label(&self) -> Option<String> {
+        Some(format!("{}", self.pdf_path))
     }
 }
 

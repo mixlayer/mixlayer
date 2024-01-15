@@ -1,5 +1,5 @@
 use log::debug;
-use valence_data::Frame;
+use valence_data::{Frame, JsonObject};
 use valence_graph::{VNode, VNodeCtx, VSink};
 use valence_runtime_ffi::{
     prost::Message,
@@ -54,7 +54,7 @@ extern "C" {
 }
 
 struct MxlVectorConfig {
-    chunk_fn: Box<dyn Fn(String) -> Vec<String> + Send + Sync>,
+    chunk_fn: Box<dyn Fn(&JsonObject) -> Vec<String> + Send + Sync>,
     embedding_model: Box<dyn EmbeddingModel + Send + Sync>,
 }
 
@@ -90,7 +90,7 @@ impl MxlCollectionSink {
     where
         E: EmbeddingModel + Send + Sync + 'static,
         C: IntoChunks,
-        F: Fn(String) -> C + Send + Sync + 'static,
+        F: Fn(&JsonObject) -> C + Send + Sync + 'static,
     {
         if self.vector_config.is_some() {
             return Err(anyhow!("collection already has vector index"));
@@ -105,7 +105,7 @@ impl MxlCollectionSink {
         let create_buf: ByteBuffer = create_vec_idx.encode_to_vec().into();
         let _coll_handle = unsafe { _mixdb_create_vector_index(&create_buf) };
 
-        let chunk_fn = move |chunk: String| {
+        let chunk_fn = move |chunk: &JsonObject| {
             let chunks = (chunk_fn)(chunk).into_chunks();
             chunks
         };
@@ -118,7 +118,7 @@ impl MxlCollectionSink {
         Ok(())
     }
 
-    fn index_frame(&self, doc_id: u32, document: String) -> Result<()> {
+    fn index_frame(&self, doc_id: u32, document: &JsonObject) -> Result<()> {
         if let Some(vector_config) = self.vector_config.as_ref() {
             let chunks = (vector_config.chunk_fn)(document);
 
@@ -166,7 +166,7 @@ impl VNode for MxlCollectionSink {
                 let insert_proto = MixDbInsertProto {
                     db_name: "default".to_owned(),
                     collection: self.coll_name.clone(),
-                    json: data.clone(),
+                    json: serde_json::to_string(data.as_map()).unwrap(),
                 };
 
                 let insert_buf: ByteBuffer = insert_proto.encode_to_vec().into();
@@ -177,13 +177,17 @@ impl VNode for MxlCollectionSink {
                     doc_id, self.coll_name
                 );
 
-                self.index_frame(doc_id as u32, data.clone()).unwrap();
+                self.index_frame(doc_id as u32, data).unwrap();
             }
             // Some(Frame::End) => {
 
             // }
             _ => (),
         }
+    }
+
+    fn default_label(&self) -> Option<String> {
+        Some(format!("Collection {}", self.coll_name))
     }
 }
 
@@ -197,5 +201,5 @@ impl Drop for MxlCollectionSink {
 }
 
 impl VSink for MxlCollectionSink {
-    type Input = String;
+    type Input = JsonObject;
 }
