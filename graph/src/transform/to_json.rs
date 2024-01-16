@@ -1,53 +1,50 @@
 use std::marker::PhantomData;
 
+use serde::Serialize;
+use valence_data::JsonObject;
+
 use super::VTransform;
 use crate::{graph::VNode, Frame, Result, VData};
 
-pub struct FilterXform<I, F>
+pub struct ToJsonXform<I>
 where
-    I: VData,
-    F: Fn(&I) -> bool,
+    I: VData + Serialize,
 {
-    func: F,
     _i: PhantomData<I>,
 }
 
-impl<I, F> FilterXform<I, F>
+impl<I> ToJsonXform<I>
 where
-    I: VData,
-    F: Fn(&I) -> bool,
+    I: VData + Serialize,
 {
-    pub fn new(func: F) -> Self {
-        FilterXform {
-            func,
+    pub fn new() -> Self {
+        ToJsonXform {
             _i: Default::default(),
         }
     }
 }
 
-impl<I, F> VTransform for FilterXform<I, F>
+impl<I> VTransform for ToJsonXform<I>
 where
-    I: VData,
-    F: Fn(&I) -> bool,
+    I: VData + Serialize,
 {
     type Input = I;
-    type Output = I;
+    type Output = JsonObject;
 }
 
-impl<I, F> VNode for FilterXform<I, F>
+impl<I> VNode for ToJsonXform<I>
 where
-    I: VData,
-    F: Fn(&I) -> bool,
+    I: VData + Serialize,
 {
     fn tick(&mut self, ctx: &mut crate::graph::VNodeCtx) -> Result<()> {
         if let Some(next) = self.recv(ctx) {
             match next {
-                crate::Frame::Error => (),
                 crate::Frame::Data(data) => {
-                    if (self.func)(&data) {
-                        self.send(ctx, Frame::Data(data))?
-                    }
+                    let json = serde_json::to_value(data)?;
+                    let json_obj = json.try_into()?;
+                    self.send(ctx, Frame::Data(json_obj))?
                 }
+                crate::Frame::Error => (),
                 crate::Frame::End => self.send(ctx, Frame::End)?,
             }
         }
@@ -56,6 +53,6 @@ where
     }
 
     fn default_label(&self) -> Option<String> {
-        Some("Filter".to_owned())
+        Some("ToJson".to_owned())
     }
 }

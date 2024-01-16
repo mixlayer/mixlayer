@@ -3,9 +3,11 @@ use std::{
     marker::PhantomData,
 };
 
+use anyhow::Result;
 use bytes::Bytes;
 use log::error;
 use serde::Serialize;
+use valence_data::JsonObject;
 
 use crate::{
     transform, Frame, InputChannel, OutputChannel, VData, VLeftJoin, VSink, VSource, VTransform, KV,
@@ -286,14 +288,21 @@ impl<In, Out: VData> VNodeRef<In, Out> {
         self.transform(g, crate::transform::map(f))
     }
 
+    pub fn try_map<MapO: VData, F: Fn(Out) -> Result<MapO> + Sync + Send + 'static>(
+        &self,
+        g: &mut VGraph,
+        f: F,
+    ) -> VNodeRef<Out, MapO> {
+        self.transform(g, crate::transform::try_map(f))
+    }
+
     //TODO probably put behind a feature so not forced to import serde_json for everyone
     // or separate crate
-    pub fn to_json(&self, g: &mut VGraph) -> VNodeRef<Out, String>
+    pub fn to_json(&self, g: &mut VGraph) -> VNodeRef<Out, JsonObject>
     where
-        Out: Serialize,
+        Out: Serialize + Serialize,
     {
-        //FIXME use try_map in future instead
-        self.map(g, |d| serde_json::to_string(&d).unwrap())
+        self.transform(g, crate::transform::to_json())
     }
 
     pub fn filter<F: Fn(&Out) -> bool + Send + Sync + 'static>(
@@ -370,7 +379,7 @@ pub trait VNode {
         None
     }
 
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> ();
+    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<(), anyhow::Error>;
 }
 
 pub struct VNodeCtx {

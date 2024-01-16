@@ -117,12 +117,10 @@ impl InputChannel for FFIEdgeChannel {
 
 #[no_mangle]
 extern "C" fn _valence_tick_node(graph: *mut VGraph, node_id: u32) -> () {
-    // debug!("tick node: {}", node_id);
     let graph = unsafe { Box::leak(Box::from_raw(graph)) };
 
     let inputs = inputs_for_node(&graph, &node_id);
     let outputs = outputs_for_node(&graph, &node_id);
-    // let node_label = graph.node_metadata(&node_id).unwrap().to_owned();
 
     if let Some(node) = graph.node_mut(&node_id) {
         let mut ctx = graph::VNodeCtx::new();
@@ -130,7 +128,11 @@ extern "C" fn _valence_tick_node(graph: *mut VGraph, node_id: u32) -> () {
         ctx.inputs = inputs;
         ctx.outputs = outputs;
 
-        node.tick(&mut ctx);
+        //TODO error recovery, classification, retries, etc
+        match node.tick(&mut ctx) {
+            Ok(_) => (),
+            Err(err) => error!("node error: {}", err),
+        }
     } else {
         error!("node {} not found", node_id);
     }
@@ -195,8 +197,6 @@ extern "C" fn _valence_export_graph(graph: *mut VGraph) -> *const ByteBuffer {
         metadata: nodes,
         edges,
     };
-
-    // debug!("constructed graph:\n {:#?}", export);
 
     let buf = FFIMessage(&export).try_into().unwrap();
 

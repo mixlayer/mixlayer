@@ -2,7 +2,7 @@ use crate::graph::VSource;
 use crate::graph::{VNode, VNodeCtx};
 use crate::io::{VFile, VFileMode};
 use crate::Frame;
-use anyhow::Result;
+use crate::Result;
 use std::io::{self, BufRead};
 use std::path::Path;
 
@@ -29,18 +29,20 @@ impl VSource for FsLineSource {
 }
 
 impl VNode for FsLineSource {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> () {
+    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
         if !self.done {
             let next_line = self.lines.next();
 
             match next_line {
-                Some(Ok(line)) => self.send(ctx, Frame::Data(line)),
-                Some(Err(_err)) => self.send(ctx, Frame::Error),
+                Some(Ok(line)) => self.send(ctx, Frame::Data(line))?,
+                Some(Err(_err)) => self.send(ctx, Frame::Error)?,
                 None => {
                     self.done = true;
-                    self.send(ctx, Frame::End)
+                    self.send(ctx, Frame::End)?;
                 }
             }
         }
+
+        Ok(())
     }
 }

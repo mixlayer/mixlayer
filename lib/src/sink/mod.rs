@@ -2,12 +2,12 @@ mod fs;
 
 pub use fs::FsLineSink;
 
+use crate::vlog;
+use anyhow::Result;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use valence_data::Frame;
 use valence_graph::{VData, VNode, VNodeCtx, VSink};
-
-use crate::vlog;
 
 pub struct DebugSink<V: Debug + VData> {
     _v: PhantomData<V>,
@@ -18,7 +18,7 @@ impl<V: Debug + VData> VSink for DebugSink<V> {
 }
 
 impl<V: Debug + VData> VNode for DebugSink<V> {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> () {
+    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
         if let Some(next) = self.recv(ctx) {
             match next {
                 Frame::Error => vlog!("sink error"),
@@ -26,6 +26,8 @@ impl<V: Debug + VData> VNode for DebugSink<V> {
                 Frame::End => vlog!("stream ended"),
             }
         }
+
+        Ok(())
     }
 }
 

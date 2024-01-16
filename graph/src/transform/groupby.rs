@@ -3,7 +3,7 @@ use std::hash::Hash;
 
 use crate::{
     graph::{VNode, VNodeCtx},
-    Frame, VData, KV,
+    Frame, Result, VData, KV,
 };
 
 use super::VTransform;
@@ -44,7 +44,7 @@ where
     K: VData + Eq + Hash,
     V: VData,
 {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> () {
+    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
         if self.buffering {
             if let Some(frame) = self.recv(ctx) {
                 match frame {
@@ -61,19 +61,21 @@ where
                             panic!("invalid buffer state")
                         }
                     }
-                    crate::Frame::Error => todo!(),
+                    crate::Frame::Error => (),
                     crate::Frame::End => self.buffering = false,
                 }
             }
         } else {
             if let Some(mut buffer) = self.buffer.take() {
                 for (k, v) in buffer.drain() {
-                    self.send(ctx, Frame::Data(KV(k, v)));
+                    self.send(ctx, Frame::Data(KV(k, v)))?;
                 }
 
-                self.send(ctx, Frame::End);
+                self.send(ctx, Frame::End)?;
             }
         }
+
+        Ok(())
     }
 
     fn default_label(&self) -> Option<String> {

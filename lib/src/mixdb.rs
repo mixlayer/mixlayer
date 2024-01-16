@@ -10,7 +10,7 @@ use valence_runtime_ffi::{
     ByteBuffer,
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 
 use crate::ai::EmbeddingModel;
 
@@ -158,7 +158,7 @@ impl MxlCollectionSink {
 }
 
 impl VNode for MxlCollectionSink {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> () {
+    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
         let next = self.recv(ctx);
 
         match &next {
@@ -177,13 +177,13 @@ impl VNode for MxlCollectionSink {
                     doc_id, self.coll_name
                 );
 
-                self.index_frame(doc_id as u32, data).unwrap();
+                self.index_frame(doc_id as u32, data)
+                    .context("error indexing frame")?;
             }
-            // Some(Frame::End) => {
-
-            // }
             _ => (),
         }
+
+        Ok(())
     }
 
     fn default_label(&self) -> Option<String> {

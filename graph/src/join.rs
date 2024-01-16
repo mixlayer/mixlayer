@@ -1,4 +1,5 @@
 use crate::graph::{VNode, VNodeCtx};
+use crate::Result;
 use crate::{Frame, VData, KV};
 use std::marker::PhantomData;
 
@@ -58,7 +59,7 @@ where
     L: VData,
     R: VData,
 {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> () {
+    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
         if self.buffering {
             match self.recv_right(ctx) {
                 Some(frame) => match frame {
@@ -85,6 +86,12 @@ where
                 _ => (),
             }
         }
+
+        Ok(())
+    }
+
+    fn default_label(&self) -> Option<String> {
+        None
     }
 }
 
