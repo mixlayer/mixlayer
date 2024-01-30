@@ -161,6 +161,14 @@ enum ChatCompletionModelProto {
   OpenAIGpt4 = 4;
 }
 
+message BatchChatCompletionRequest { 
+  repeated ChatCompletionRequest requests = 1;
+}
+
+message BatchChatCompletionResponse { 
+  repeated ChatCompletionResponse responses = 1; 
+}
+
 message ReadPdfPagesTextRequest { 
   string file = 1; 
 }

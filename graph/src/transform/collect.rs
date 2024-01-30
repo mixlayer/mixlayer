@@ -38,16 +38,17 @@ where
     fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
         if let Some(next) = self.recv(ctx) {
             match next {
-                crate::Frame::Error => (), //TODO
                 crate::Frame::Data(data) => {
                     self.buf.push(data);
                 }
-                crate::Frame::End => {
-                    //TODO take from Option<_> so we don't have to clone
-                    self.send(ctx, Frame::Data(self.buf.clone()))?;
-                    self.send(ctx, Frame::End)?;
-                }
+                _ => (), //TODO
             }
+        }
+
+        if ctx.recv_finished() {
+            //TODO take from Option<_> so we don't have to clone
+            self.send(ctx, Frame::Data(self.buf.clone()))?;
+            self.send(ctx, Frame::End)?;
         }
 
         Ok(())

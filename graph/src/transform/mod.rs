@@ -1,3 +1,4 @@
+mod batch;
 mod collect;
 mod filter;
 mod flatten;
@@ -13,9 +14,9 @@ use crate::{Frame, Result, VData};
 use anyhow::anyhow;
 use serde::Serialize;
 
-use self::filter::FilterXform;
-use self::groupby::GroupByKey;
-use self::map::{MapXform, TryMapXform};
+pub use self::filter::FilterXform;
+pub use self::groupby::GroupByKey;
+pub use self::map::{MapXform, TryMapXform};
 
 pub trait VTransform: VNode {
     type Input: VData;
@@ -221,4 +222,11 @@ where
     I: VData + Serialize,
 {
     to_json::ToJsonXform::new()
+}
+
+pub fn batch<I>(size: usize) -> batch::BatchXform<I>
+where
+    I: VData,
+{
+    batch::BatchXform::new(size)
 }

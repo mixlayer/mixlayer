@@ -44,9 +44,12 @@ where
                     let json_obj = json.try_into()?;
                     self.send(ctx, Frame::Data(json_obj))?
                 }
-                crate::Frame::Error => (),
-                crate::Frame::End => self.send(ctx, Frame::End)?,
+                _ => (),
             }
+        }
+
+        if ctx.recv_finished() {
+            self.send(ctx, Frame::End)?;
         }
 
         Ok(())

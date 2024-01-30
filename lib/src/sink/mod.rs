@@ -1,8 +1,8 @@
 mod fs;
 
 pub use fs::FsLineSink;
+use log::debug;
 
-use crate::vlog;
 use anyhow::Result;
 use std::fmt::Debug;
 use std::marker::PhantomData;
@@ -21,13 +21,21 @@ impl<V: Debug + VData> VNode for DebugSink<V> {
     fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
         if let Some(next) = self.recv(ctx) {
             match next {
-                Frame::Error => vlog!("sink error"),
-                Frame::Data(d) => vlog!("frame: {:#?}", d),
-                Frame::End => vlog!("stream ended"),
+                Frame::Error => debug!("sink error"),
+                Frame::Data(d) => debug!("frame: {:#?}", d),
+                Frame::End => debug!("single input finished"),
+            }
+
+            if ctx.recv_finished() {
+                debug!("all inputs finished");
             }
         }
 
         Ok(())
+    }
+
+    fn default_label(&self) -> Option<String> {
+        Some("Debug".to_owned())
     }
 }
 

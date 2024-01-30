@@ -38,6 +38,7 @@ extern "C" {
     /// * `data` a `ByteBuffer` containing a `Frame` to be sent
     pub fn _valence_edge_channel_send(id: *const ByteBuffer, data: *const ByteBuffer) -> ();
     pub fn _valence_edge_channel_recv(id: *const ByteBuffer) -> *mut ByteBuffer;
+    pub fn _valence_edge_is_finished(id: *const ByteBuffer) -> i32;
 
     pub fn _valence_unixtime() -> i32;
 
@@ -93,7 +94,9 @@ impl OutputChannel for FFIEdgeChannel {
 
 impl InputChannel for FFIEdgeChannel {
     fn finished(&self) -> bool {
-        false //TODO
+        let edge_buf: ByteBuffer = FFIMessage(&self.edge).try_into().unwrap();
+        let is_finished = unsafe { _valence_edge_is_finished(&edge_buf) };
+        is_finished > 0
     }
 
     fn recv(&self) -> Option<graph::Frame<valence_runtime_ffi::prost::bytes::Bytes>> {

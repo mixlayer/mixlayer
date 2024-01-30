@@ -172,6 +172,11 @@ impl VNode for MxlCollectionSink {
                 let insert_buf: ByteBuffer = insert_proto.encode_to_vec().into();
                 let doc_id = unsafe { _mixdb_insert(&insert_buf) };
 
+                //TODO make this better when we return better ffi errors
+                if doc_id < 0 {
+                    return Err(anyhow!("error inserting document"));
+                }
+
                 debug!(
                     "inserted document {} into collection {}",
                     doc_id, self.coll_name

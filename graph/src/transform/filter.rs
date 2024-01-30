@@ -42,14 +42,17 @@ where
     fn tick(&mut self, ctx: &mut crate::graph::VNodeCtx) -> Result<()> {
         if let Some(next) = self.recv(ctx) {
             match next {
-                crate::Frame::Error => (),
                 crate::Frame::Data(data) => {
                     if (self.func)(&data) {
                         self.send(ctx, Frame::Data(data))?
                     }
                 }
-                crate::Frame::End => self.send(ctx, Frame::End)?,
+                _ => (),
             }
+        }
+
+        if ctx.recv_finished() {
+            self.send(ctx, Frame::End)?;
         }
 
         Ok(())

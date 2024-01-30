@@ -181,6 +181,19 @@ impl VGraph {
         }
     }
 
+    pub fn transform<I: VData, O: VData, N: VTransform<Input = I, Output = O> + Send + 'static>(
+        &mut self,
+        xform: N,
+    ) -> VNodeRef<I, O> {
+        let node_id = self.insert::<N::Input, (), _>(xform, None, None, VNodeType::Transform);
+
+        VNodeRef::<I, O> {
+            node_id,
+            _in: Default::default(),
+            _out: Default::default(),
+        }
+    }
+
     pub fn insert<I, O, N: VNode + Send + 'static>(
         &mut self,
         node: N,
@@ -357,6 +370,7 @@ impl<In, Out: VData> VNodeRef<In, Out> {
         self
     }
 
+    //TODO probably just get rid of this in favor of connect()
     pub fn connect_sink(&self, g: &mut VGraph, sink: &VNodeRef<Out, ()>) -> () {
         g.insert_edge(VEdge {
             source_node_id: self.node_id,
@@ -364,6 +378,19 @@ impl<In, Out: VData> VNodeRef<In, Out> {
             dest_node_id: sink.node_id,
             dest_port: 0,
         })
+    }
+
+    pub fn connect<Any>(&self, g: &mut VGraph, next: &VNodeRef<Out, Any>) -> () {
+        g.insert_edge(VEdge {
+            source_node_id: self.node_id,
+            source_port: 0,
+            dest_node_id: next.node_id,
+            dest_port: 0,
+        })
+    }
+
+    pub fn batch(&self, g: &mut VGraph, batch_size: usize) -> VNodeRef<Out, Vec<Out>> {
+        self.transform(g, transform::batch(batch_size))
     }
 }
 
@@ -413,6 +440,10 @@ impl VNodeCtx {
             None
         }
     }
+
+    pub fn recv_finished(&self) -> bool {
+        self.inputs.values().all(|i| i.finished())
+    }
 }
 
 pub struct Output {
@@ -449,6 +480,10 @@ impl Input {
         }
 
         None
+    }
+
+    pub fn finished(&self) -> bool {
+        self.input_chs.iter().all(|ch| ch.finished())
     }
 }
 

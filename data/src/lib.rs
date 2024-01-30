@@ -367,6 +367,10 @@ impl JsonObject {
     pub fn as_map_mut(&mut self) -> &mut serde_json::Map<String, serde_json::Value> {
         &mut self.0
     }
+
+    pub fn into_map(self) -> serde_json::Map<String, serde_json::Value> {
+        self.0
+    }
 }
 
 impl TryFrom<serde_json::Value> for JsonObject {
