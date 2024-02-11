@@ -14,7 +14,7 @@ pub use graph::{
     Frame, Input, InputChannel, Output, OutputChannel, VEdge, VGraph, VNodeId, VNodeRef, VNodeType,
 };
 
-pub use valence_data::{JsonObject, JsonValue};
+pub use valence_data::{JsonObject, JsonVData, JsonValue};
 pub use valence_macros::builder;
 
 pub use anyhow::Result;
@@ -97,6 +97,10 @@ impl InputChannel for FFIEdgeChannel {
         let edge_buf: ByteBuffer = FFIMessage(&self.edge).try_into().unwrap();
         let is_finished = unsafe { _valence_edge_is_finished(&edge_buf) };
         is_finished > 0
+    }
+
+    fn finished_writing(&self) -> bool {
+        todo!()
     }
 
     fn recv(&self) -> Option<graph::Frame<valence_runtime_ffi::prost::bytes::Bytes>> {

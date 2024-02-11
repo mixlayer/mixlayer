@@ -188,6 +188,11 @@ impl VNode for MxlCollectionSink {
             _ => (),
         }
 
+        if ctx.recv_finished() {
+            self.finish_indexes()
+                .with_context(|| "error finalizing indexes")?;
+        }
+
         Ok(())
     }
 
@@ -199,11 +204,12 @@ impl VNode for MxlCollectionSink {
 // TODO implement this in a better way. we were previously hooking on Frame::End but that
 // breaks if there are several upstream edges to the sink. we need to hook on the last
 // ideally the runtime will notify us that there's no more data coming
-impl Drop for MxlCollectionSink {
-    fn drop(&mut self) {
-        self.finish_indexes().unwrap();
-    }
-}
+// FIXME this breaks in a sharded environment because it's dropped in every shard
+// impl Drop for MxlCollectionSink {
+//     fn drop(&mut self) {
+//         self.finish_indexes().unwrap();
+//     }
+// }
 
 impl VSink for MxlCollectionSink {
     type Input = JsonObject;

@@ -1,6 +1,6 @@
 use bytes::Bytes;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::fmt::Debug;
+use std::{borrow::Borrow, fmt::Debug};
 
 mod channel;
 
@@ -370,6 +370,28 @@ impl JsonObject {
 
     pub fn into_map(self) -> serde_json::Map<String, serde_json::Value> {
         self.0
+    }
+}
+
+impl<'a, Q> std::ops::Index<&'a Q> for JsonObject
+where
+    String: Borrow<Q>,
+    Q: ?Sized + Ord + Eq + std::hash::Hash,
+{
+    type Output = serde_json::Value;
+
+    fn index(&self, index: &Q) -> &serde_json::Value {
+        self.0.index(index)
+    }
+}
+
+impl<'a, Q> std::ops::IndexMut<&'a Q> for JsonObject
+where
+    String: Borrow<Q>,
+    Q: ?Sized + Ord + Eq + std::hash::Hash,
+{
+    fn index_mut(&mut self, index: &'a Q) -> &mut Self::Output {
+        self.0.index_mut(index)
     }
 }
 
