@@ -55,13 +55,13 @@ impl OutputChannel for InMemoryEdgeChannel {
 
         match state {
             EdgeChannelState::FinishedWriting => {
-                println!(
+                warn!(
                     "output ch[{}]: tried to write {:?} after finished writing",
                     self.edge_id, data
                 )
             }
             EdgeChannelState::FinishedReading => {
-                println!(
+                warn!(
                     "output ch[{}]: tried to write {:?} after finished reading",
                     self.edge_id, data
                 )

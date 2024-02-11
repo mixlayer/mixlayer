@@ -3,9 +3,11 @@ use std::{
     marker::PhantomData,
 };
 
+use anyhow::Result;
 use bytes::Bytes;
 use log::error;
 use serde::Serialize;
+use valence_data::JsonObject;
 
 use crate::{
     transform, Frame, InputChannel, OutputChannel, VData, VLeftJoin, VSink, VSource, VTransform, KV,
@@ -179,6 +181,19 @@ impl VGraph {
         }
     }
 
+    pub fn transform<I: VData, O: VData, N: VTransform<Input = I, Output = O> + Send + 'static>(
+        &mut self,
+        xform: N,
+    ) -> VNodeRef<I, O> {
+        let node_id = self.insert::<N::Input, (), _>(xform, None, None, VNodeType::Transform);
+
+        VNodeRef::<I, O> {
+            node_id,
+            _in: Default::default(),
+            _out: Default::default(),
+        }
+    }
+
     pub fn insert<I, O, N: VNode + Send + 'static>(
         &mut self,
         node: N,
@@ -286,14 +301,21 @@ impl<In, Out: VData> VNodeRef<In, Out> {
         self.transform(g, crate::transform::map(f))
     }
 
+    pub fn try_map<MapO: VData, F: Fn(Out) -> Result<MapO> + Sync + Send + 'static>(
+        &self,
+        g: &mut VGraph,
+        f: F,
+    ) -> VNodeRef<Out, MapO> {
+        self.transform(g, crate::transform::try_map(f))
+    }
+
     //TODO probably put behind a feature so not forced to import serde_json for everyone
     // or separate crate
-    pub fn to_json(&self, g: &mut VGraph) -> VNodeRef<Out, String>
+    pub fn to_json(&self, g: &mut VGraph) -> VNodeRef<Out, JsonObject>
     where
-        Out: Serialize,
+        Out: Serialize + Serialize,
     {
-        //FIXME use try_map in future instead
-        self.map(g, |d| serde_json::to_string(&d).unwrap())
+        self.transform(g, crate::transform::to_json())
     }
 
     pub fn filter<F: Fn(&Out) -> bool + Send + Sync + 'static>(
@@ -348,6 +370,7 @@ impl<In, Out: VData> VNodeRef<In, Out> {
         self
     }
 
+    //TODO probably just get rid of this in favor of connect()
     pub fn connect_sink(&self, g: &mut VGraph, sink: &VNodeRef<Out, ()>) -> () {
         g.insert_edge(VEdge {
             source_node_id: self.node_id,
@@ -355,6 +378,19 @@ impl<In, Out: VData> VNodeRef<In, Out> {
             dest_node_id: sink.node_id,
             dest_port: 0,
         })
+    }
+
+    pub fn connect<Any>(&self, g: &mut VGraph, next: &VNodeRef<Out, Any>) -> () {
+        g.insert_edge(VEdge {
+            source_node_id: self.node_id,
+            source_port: 0,
+            dest_node_id: next.node_id,
+            dest_port: 0,
+        })
+    }
+
+    pub fn batch(&self, g: &mut VGraph, batch_size: usize) -> VNodeRef<Out, Vec<Out>> {
+        self.transform(g, transform::batch(batch_size))
     }
 }
 
@@ -370,7 +406,7 @@ pub trait VNode {
         None
     }
 
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> ();
+    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<(), anyhow::Error>;
 }
 
 pub struct VNodeCtx {
@@ -403,6 +439,10 @@ impl VNodeCtx {
             error!("invalid input index"); //TODO return error
             None
         }
+    }
+
+    pub fn recv_finished(&self) -> bool {
+        self.inputs.values().all(|i| i.finished())
     }
 }
 
@@ -440,6 +480,10 @@ impl Input {
         }
 
         None
+    }
+
+    pub fn finished(&self) -> bool {
+        self.input_chs.iter().all(|ch| ch.finished())
     }
 }
 

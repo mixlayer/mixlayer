@@ -1,17 +1,22 @@
+mod batch;
 mod collect;
 mod filter;
 mod flatten;
 mod groupby;
 mod map;
+mod to_json;
 
 use std::{fmt::Display, marker::PhantomData};
 
 use crate::graph::{VNode, VNodeCtx};
-use crate::{Frame, VData};
+use crate::{Frame, Result, VData};
 
-use self::filter::FilterXform;
-use self::groupby::GroupByKey;
-use self::map::MapXform;
+use anyhow::anyhow;
+use serde::Serialize;
+
+pub use self::filter::FilterXform;
+pub use self::groupby::GroupByKey;
+pub use self::map::{MapXform, TryMapXform};
 
 pub trait VTransform: VNode {
     type Input: VData;
@@ -25,21 +30,34 @@ pub trait VTransform: VNode {
         }
     }
 
-    fn send(&self, ctx: &mut VNodeCtx, data: Frame<Self::Output>) -> () {
-        let data = data.flat_map(|d| d.into_buffer_frame().unwrap());
-        ctx.send(0, data);
+    fn send(&self, ctx: &mut VNodeCtx, data: Frame<Self::Output>) -> Result<()> {
+        match data {
+            Frame::Data(d) => {
+                let byte_frame = d
+                    .into_buffer_frame()
+                    .map_err(|_| anyhow!("error serializing frame"))?;
+
+                ctx.send(0, byte_frame);
+            }
+            Frame::End => ctx.send(0, Frame::End),
+            Frame::Error => ctx.send(0, Frame::Error),
+        };
+
+        Ok(())
     }
 }
 
 pub struct LowercaseXform;
 
 impl VNode for UppercaseXform {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> () {
+    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
         match self.recv(ctx) {
-            Some(Frame::Data(data)) => self.send(ctx, Frame::Data(data.to_uppercase())),
-            Some(Frame::End) => self.send(ctx, Frame::End),
+            Some(Frame::Data(data)) => self.send(ctx, Frame::Data(data.to_uppercase()))?,
+            Some(Frame::End) => self.send(ctx, Frame::End)?,
             _ => (),
         }
+
+        Ok(())
     }
 }
 
@@ -51,12 +69,14 @@ impl VTransform for UppercaseXform {
 pub struct UppercaseXform;
 
 impl VNode for LowercaseXform {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> () {
+    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
         match self.recv(ctx) {
-            Some(Frame::Data(data)) => self.send(ctx, Frame::Data(data.to_lowercase())),
-            Some(Frame::End) => self.send(ctx, Frame::End),
+            Some(Frame::Data(data)) => self.send(ctx, Frame::Data(data.to_lowercase()))?,
+            Some(Frame::End) => self.send(ctx, Frame::End)?,
             _ => (),
         }
+
+        Ok(())
     }
 }
 
@@ -75,15 +95,17 @@ impl VTransform for CountXform {
 }
 
 impl VNode for CountXform {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> () {
+    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
         match self.recv(ctx) {
             Some(Frame::Data(_data)) => self.state = self.state + 1,
             Some(Frame::End) => {
-                self.send(ctx, Frame::Data(self.state));
-                self.send(ctx, Frame::End)
+                self.send(ctx, Frame::Data(self.state))?;
+                self.send(ctx, Frame::End)?;
             }
             _ => (),
         }
+
+        Ok(())
     }
 }
 
@@ -97,13 +119,15 @@ impl<I: Display + VData> VTransform for ToStringXform<I> {
 }
 
 impl<I: Display + VData> VNode for ToStringXform<I> {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> () {
+    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
         let frame = self.recv(ctx);
         match frame {
-            Some(Frame::Data(data)) => self.send(ctx, Frame::Data(format!("{}", data))),
-            Some(Frame::End) => self.send(ctx, Frame::End),
+            Some(Frame::Data(data)) => self.send(ctx, Frame::Data(format!("{}", data)))?,
+            Some(Frame::End) => self.send(ctx, Frame::End)?,
             _ => (),
         }
+
+        Ok(())
     }
 }
 
@@ -117,13 +141,15 @@ impl<I: std::fmt::Debug + VData> VTransform for ToDebugStringXform<I> {
 }
 
 impl<I: std::fmt::Debug + VData> VNode for ToDebugStringXform<I> {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> () {
+    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
         let frame = self.recv(ctx);
         match frame {
-            Some(Frame::Data(data)) => self.send(ctx, Frame::Data(format!("{:?}", data))),
-            Some(Frame::End) => self.send(ctx, Frame::End),
+            Some(Frame::Data(data)) => self.send(ctx, Frame::Data(format!("{:?}", data)))?,
+            Some(Frame::End) => self.send(ctx, Frame::End)?,
             _ => (),
         }
+
+        Ok(())
     }
 }
 
@@ -151,6 +177,15 @@ where
     GroupByKey::new()
 }
 
+pub fn try_map<I, O, F>(f: F) -> TryMapXform<I, O, F>
+where
+    I: VData,
+    O: VData,
+    F: Fn(I) -> Result<O>,
+{
+    map::TryMapXform::new(f)
+}
+
 pub fn map<I, O, F>(f: F) -> MapXform<I, O, F>
 where
     I: VData,
@@ -166,7 +201,6 @@ where
     F: Fn(&I) -> bool,
 {
     filter::FilterXform::new(f)
-    // map::MapXform::new(move |i| if f(&i) { Some(i) } else { None })
 }
 
 pub fn flatten<I>() -> flatten::FlattenXform<I>
@@ -181,4 +215,18 @@ where
     I: VData,
 {
     collect::CollectXform::new()
+}
+
+pub fn to_json<I>() -> to_json::ToJsonXform<I>
+where
+    I: VData + Serialize,
+{
+    to_json::ToJsonXform::new()
+}
+
+pub fn batch<I>(size: usize) -> batch::BatchXform<I>
+where
+    I: VData,
+{
+    batch::BatchXform::new(size)
 }

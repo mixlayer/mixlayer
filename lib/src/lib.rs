@@ -14,7 +14,7 @@ pub use graph::{
     Frame, Input, InputChannel, Output, OutputChannel, VEdge, VGraph, VNodeId, VNodeRef, VNodeType,
 };
 
-pub use valence_data::{JsonObject, JsonValue};
+pub use valence_data::{JsonObject, JsonVData, JsonValue};
 pub use valence_macros::builder;
 
 pub use anyhow::Result;
@@ -38,6 +38,7 @@ extern "C" {
     /// * `data` a `ByteBuffer` containing a `Frame` to be sent
     pub fn _valence_edge_channel_send(id: *const ByteBuffer, data: *const ByteBuffer) -> ();
     pub fn _valence_edge_channel_recv(id: *const ByteBuffer) -> *mut ByteBuffer;
+    pub fn _valence_edge_is_finished(id: *const ByteBuffer) -> i32;
 
     pub fn _valence_unixtime() -> i32;
 
@@ -93,7 +94,13 @@ impl OutputChannel for FFIEdgeChannel {
 
 impl InputChannel for FFIEdgeChannel {
     fn finished(&self) -> bool {
-        false //TODO
+        let edge_buf: ByteBuffer = FFIMessage(&self.edge).try_into().unwrap();
+        let is_finished = unsafe { _valence_edge_is_finished(&edge_buf) };
+        is_finished > 0
+    }
+
+    fn finished_writing(&self) -> bool {
+        todo!()
     }
 
     fn recv(&self) -> Option<graph::Frame<valence_runtime_ffi::prost::bytes::Bytes>> {
@@ -117,12 +124,10 @@ impl InputChannel for FFIEdgeChannel {
 
 #[no_mangle]
 extern "C" fn _valence_tick_node(graph: *mut VGraph, node_id: u32) -> () {
-    // debug!("tick node: {}", node_id);
     let graph = unsafe { Box::leak(Box::from_raw(graph)) };
 
     let inputs = inputs_for_node(&graph, &node_id);
     let outputs = outputs_for_node(&graph, &node_id);
-    // let node_label = graph.node_metadata(&node_id).unwrap().to_owned();
 
     if let Some(node) = graph.node_mut(&node_id) {
         let mut ctx = graph::VNodeCtx::new();
@@ -130,7 +135,11 @@ extern "C" fn _valence_tick_node(graph: *mut VGraph, node_id: u32) -> () {
         ctx.inputs = inputs;
         ctx.outputs = outputs;
 
-        node.tick(&mut ctx);
+        //TODO error recovery, classification, retries, etc
+        match node.tick(&mut ctx) {
+            Ok(_) => (),
+            Err(err) => error!("node error: {}", err),
+        }
     } else {
         error!("node {} not found", node_id);
     }
@@ -195,8 +204,6 @@ extern "C" fn _valence_export_graph(graph: *mut VGraph) -> *const ByteBuffer {
         metadata: nodes,
         edges,
     };
-
-    // debug!("constructed graph:\n {:#?}", export);
 
     let buf = FFIMessage(&export).try_into().unwrap();
 

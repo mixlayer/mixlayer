@@ -10,5 +10,6 @@ pub trait OutputChannel {
 
 pub trait InputChannel {
     fn finished(&self) -> bool;
+    fn finished_writing(&self) -> bool;
     fn recv(&self) -> Option<Frame<Bytes>>;
 }

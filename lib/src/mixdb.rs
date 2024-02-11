@@ -10,7 +10,7 @@ use valence_runtime_ffi::{
     ByteBuffer,
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 
 use crate::ai::EmbeddingModel;
 
@@ -158,7 +158,7 @@ impl MxlCollectionSink {
 }
 
 impl VNode for MxlCollectionSink {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> () {
+    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
         let next = self.recv(ctx);
 
         match &next {
@@ -172,18 +172,28 @@ impl VNode for MxlCollectionSink {
                 let insert_buf: ByteBuffer = insert_proto.encode_to_vec().into();
                 let doc_id = unsafe { _mixdb_insert(&insert_buf) };
 
+                //TODO make this better when we return better ffi errors
+                if doc_id < 0 {
+                    return Err(anyhow!("error inserting document"));
+                }
+
                 debug!(
                     "inserted document {} into collection {}",
                     doc_id, self.coll_name
                 );
 
-                self.index_frame(doc_id as u32, data).unwrap();
+                self.index_frame(doc_id as u32, data)
+                    .context("error indexing frame")?;
             }
-            // Some(Frame::End) => {
-
-            // }
             _ => (),
         }
+
+        if ctx.recv_finished() {
+            self.finish_indexes()
+                .with_context(|| "error finalizing indexes")?;
+        }
+
+        Ok(())
     }
 
     fn default_label(&self) -> Option<String> {
@@ -194,11 +204,12 @@ impl VNode for MxlCollectionSink {
 // TODO implement this in a better way. we were previously hooking on Frame::End but that
 // breaks if there are several upstream edges to the sink. we need to hook on the last
 // ideally the runtime will notify us that there's no more data coming
-impl Drop for MxlCollectionSink {
-    fn drop(&mut self) {
-        self.finish_indexes().unwrap();
-    }
-}
+// FIXME this breaks in a sharded environment because it's dropped in every shard
+// impl Drop for MxlCollectionSink {
+//     fn drop(&mut self) {
+//         self.finish_indexes().unwrap();
+//     }
+// }
 
 impl VSink for MxlCollectionSink {
     type Input = JsonObject;

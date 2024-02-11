@@ -2,7 +2,6 @@ use crate::graph::{VNode, VNodeCtx, VSink};
 use crate::io::VFile;
 use crate::Frame;
 use anyhow::Result;
-use log::error;
 use std::io::Write;
 use std::path::Path;
 
@@ -19,22 +18,19 @@ impl FsLineSink {
 }
 
 impl VNode for FsLineSink {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> () {
+    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
         let next = self.recv(ctx);
 
         match next {
             Some(Frame::Data(data)) => {
-                match self
-                    .file
+                self.file
                     .write_all(data.as_bytes())
-                    .and_then(|_| self.file.write_all("\n".as_bytes()))
-                {
-                    Ok(_) => (),
-                    Err(err) => error!("error writing: {}", err),
-                }
+                    .and_then(|_| self.file.write_all("\n".as_bytes()))?;
             }
             _ => (),
         }
+
+        Ok(())
     }
 }
 

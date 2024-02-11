@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, path::Path};
 
-use anyhow::Result;
+use crate::Result;
 use serde::{Deserialize, Serialize};
 use valence_data::{Frame, JsonVData};
 use valence_graph::{VNode, VNodeCtx, VSource};
@@ -53,7 +53,7 @@ impl VSource for PdfPageTextSource {
 }
 
 impl VNode for PdfPageTextSource {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> () {
+    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
         if let Some(page) = self.pages.pop_front() {
             self.send(
                 ctx,
@@ -62,10 +62,12 @@ impl VNode for PdfPageTextSource {
                     page: page.page_number,
                     text: page.text,
                 }),
-            );
+            )?;
         } else {
-            self.send(ctx, Frame::End);
+            self.send(ctx, Frame::End)?;
         }
+
+        Ok(())
     }
 
     fn default_label(&self) -> Option<String> {

@@ -1,14 +1,16 @@
 use std::collections::VecDeque;
 
 use crate::graph::{VNode, VNodeCtx};
-use crate::{Frame, VData};
+use crate::{Frame, Result, VData};
 
 pub trait VSource: VNode {
     type Output: VData;
 
-    fn send(&mut self, ctx: &mut VNodeCtx, data: Frame<Self::Output>) -> () {
+    fn send(&mut self, ctx: &mut VNodeCtx, data: Frame<Self::Output>) -> Result<()> {
+        //FIXME remove unwrap
         let data = data.flat_map(|d| d.into_buffer_frame().unwrap());
         ctx.send(0, data);
+        Ok(())
     }
 }
 
@@ -22,15 +24,17 @@ impl<V: VData> VSource for VecSource<V> {
 }
 
 impl<V: VData> VNode for VecSource<V> {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> () {
+    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
         if !self.finished {
             if let Some(next) = self.data.pop_back() {
-                self.send(ctx, Frame::Data(next))
+                self.send(ctx, Frame::Data(next))?;
             } else {
                 self.finished = true;
-                self.send(ctx, Frame::End);
+                self.send(ctx, Frame::End)?;
             }
         }
+
+        Ok(())
     }
 }
 
