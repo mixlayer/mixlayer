@@ -371,6 +371,10 @@ impl JsonObject {
     pub fn into_map(self) -> serde_json::Map<String, serde_json::Value> {
         self.0
     }
+
+    pub fn into_value(self) -> serde_json::Value {
+        serde_json::Value::Object(self.into_map())
+    }
 }
 
 impl<'a, Q> std::ops::Index<&'a Q> for JsonObject

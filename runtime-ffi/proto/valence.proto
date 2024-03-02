@@ -130,6 +130,35 @@ message MixDbFinishVectorIndex {
   string collection = 1; 
 }
 
+message MixDbCreateSearchIndex { 
+  string db_name = 1; 
+  string coll_name = 2; 
+  string index_name = 3;
+  repeated MixDbSearchField fields = 4; 
+}
+
+message MixDbSearchField { 
+  string field_name = 1; 
+  MixDbSearchFieldType field_type = 2;
+}
+
+enum MixDbSearchFieldType { 
+  SEARCH_FIELD_UNKNOWN = 0; 
+  SEARCH_FIELD_TEXT = 1; 
+}
+
+message MixDbSearchIndexDocument { 
+  string collection = 1;
+  string index_name = 2;
+  int32 document_id = 3;
+  string json = 4;
+}
+
+message MixDbSearchFinishIndex { 
+  string collection = 1; 
+  string index_name = 2; 
+}
+
 message CreateEmbeddingRequest { 
   string input = 1; 
   EmbeddingModelProto model = 2;

@@ -4,8 +4,9 @@ use valence_graph::{VNode, VNodeCtx, VSink};
 use valence_runtime_ffi::{
     prost::Message,
     protos::{
-        MixDbCreateCollectionProto, MixDbCreateVectorIndex, MixDbFinishVectorIndex,
-        MixDbInsertProto, MixDbInsertVector,
+        MixDbCreateCollectionProto, MixDbCreateSearchIndex, MixDbCreateVectorIndex,
+        MixDbFinishVectorIndex, MixDbInsertProto, MixDbInsertVector, MixDbSearchField,
+        MixDbSearchFieldType, MixDbSearchFinishIndex, MixDbSearchIndexDocument,
     },
     ByteBuffer,
 };
@@ -51,6 +52,10 @@ extern "C" {
     fn _mixdb_coll_iterator_next(iter_handle: u32) -> *const ByteBuffer;
 
     fn _mxl_embed_data(cmd: *const ByteBuffer) -> *const ByteBuffer;
+
+    fn _mixdb_create_search_index(cmd: *const ByteBuffer) -> *const ByteBuffer;
+    fn _mixdb_search_index_insert(cmd: *const ByteBuffer) -> *const ByteBuffer;
+    fn _mixdb_search_index_finish(cmd: *const ByteBuffer) -> *const ByteBuffer;
 }
 
 struct MxlVectorConfig {
@@ -62,8 +67,8 @@ pub struct MxlCollectionSink {
     // coll_handle: u32,
     coll_name: String,
 
-    vector_config: Option<MxlVectorConfig>,
-    // fts_buf: Option<Arc<RwLock<Vec<String>>>>,
+    vector_config: Option<MxlVectorConfig>, //TODO support multiple vector indexes
+    search_index: bool,                     //TODO support multiple search indexes
 }
 
 impl MxlCollectionSink {
@@ -83,6 +88,7 @@ impl MxlCollectionSink {
         Self {
             coll_name: name.to_owned(),
             vector_config: None,
+            search_index: false,
         }
     }
 
@@ -118,6 +124,31 @@ impl MxlCollectionSink {
         Ok(())
     }
 
+    pub fn search_index(&mut self, indexed_fields: &[&str]) -> Result<()> {
+        let fields = indexed_fields
+            .iter()
+            .map(|s| MixDbSearchField {
+                field_name: s.to_string(),
+                //FIXME get this field type from the element type schema
+                field_type: MixDbSearchFieldType::SearchFieldText as i32,
+            })
+            .collect();
+
+        let create_search_idx = MixDbCreateSearchIndex {
+            db_name: "default".to_owned(),
+            coll_name: self.coll_name.clone(),
+            index_name: "default".to_owned(),
+            fields,
+        };
+
+        let create_buf: ByteBuffer = create_search_idx.encode_to_vec().into();
+        unsafe { _mixdb_create_search_index(&create_buf) };
+
+        self.search_index = true;
+
+        Ok(())
+    }
+
     fn index_frame(&self, doc_id: u32, document: &JsonObject) -> Result<()> {
         if let Some(vector_config) = self.vector_config.as_ref() {
             let chunks = (vector_config.chunk_fn)(document);
@@ -139,6 +170,18 @@ impl MxlCollectionSink {
             }
         }
 
+        if self.search_index {
+            let insert_proto = MixDbSearchIndexDocument {
+                collection: self.coll_name.clone(),
+                index_name: "default".to_owned(),
+                document_id: doc_id as i32,
+                json: serde_json::to_string(document.as_map()).context("error serializing json")?,
+            };
+
+            let insert_buf: ByteBuffer = insert_proto.encode_to_vec().into();
+            unsafe { _mixdb_search_index_insert(&insert_buf) };
+        }
+
         Ok(())
     }
 
@@ -151,6 +194,16 @@ impl MxlCollectionSink {
             let finish_buf: ByteBuffer = finish_proto.encode_to_vec().into();
             unsafe { _mixdb_finish_vector_index(&finish_buf) };
             self.vector_config = None;
+        }
+
+        if self.search_index {
+            let finish_proto = MixDbSearchFinishIndex {
+                collection: self.coll_name.clone(),
+                index_name: "default".to_owned(),
+            };
+
+            let finish_buf: ByteBuffer = finish_proto.encode_to_vec().into();
+            unsafe { _mixdb_finish_vector_index(&finish_buf) };
         }
 
         Ok(())

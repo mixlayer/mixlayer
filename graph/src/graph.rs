@@ -389,6 +389,7 @@ impl<In, Out: VData> VNodeRef<In, Out> {
         })
     }
 
+    //TODO rename to window
     pub fn batch(&self, g: &mut VGraph, batch_size: usize) -> VNodeRef<Out, Vec<Out>> {
         self.transform(g, transform::batch(batch_size))
     }
