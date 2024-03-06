@@ -1,24 +1,24 @@
-use crate::graph::{VNode, VNodeCtx, VSink};
-use crate::io::VFile;
+use crate::graph::{MxlNode, MxlNodeCtx, MxlSink};
+use crate::io::MxlFile;
 use crate::Frame;
 use anyhow::Result;
 use std::io::Write;
 use std::path::Path;
 
 pub struct FsLineSink {
-    file: VFile,
+    file: MxlFile,
 }
 
 impl FsLineSink {
     pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
         Ok(Self {
-            file: VFile::open(path, crate::io::VFileMode::Write)?,
+            file: MxlFile::open(path, crate::io::MxlFileMode::Write)?,
         })
     }
 }
 
-impl VNode for FsLineSink {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
+impl MxlNode for FsLineSink {
+    fn tick(&mut self, ctx: &mut MxlNodeCtx) -> Result<()> {
         let next = self.recv(ctx);
 
         match next {
@@ -34,6 +34,6 @@ impl VNode for FsLineSink {
     }
 }
 
-impl VSink for FsLineSink {
+impl MxlSink for FsLineSink {
     type Input = String;
 }

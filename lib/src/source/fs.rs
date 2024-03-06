@@ -1,6 +1,6 @@
-use crate::graph::VSource;
-use crate::graph::{VNode, VNodeCtx};
-use crate::io::{VFile, VFileMode};
+use crate::graph::MxlSource;
+use crate::graph::{MxlNode, MxlNodeCtx};
+use crate::io::{MxlFile, MxlFileMode};
 use crate::Frame;
 use crate::Result;
 use std::io::{self, BufRead};
@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 /// Reads lines from a file on the local filesystem
 pub struct FsLineSource {
-    lines: Option<io::Lines<io::BufReader<VFile>>>,
+    lines: Option<io::Lines<io::BufReader<MxlFile>>>,
 
     path: PathBuf,
 
@@ -26,12 +26,12 @@ impl FsLineSource {
     }
 }
 
-impl VSource for FsLineSource {
+impl MxlSource for FsLineSource {
     type Output = String;
 }
 
-impl VNode for FsLineSource {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
+impl MxlNode for FsLineSource {
+    fn tick(&mut self, ctx: &mut MxlNodeCtx) -> Result<()> {
         if !self.done {
             if let Some(lines) = self.lines.as_mut() {
                 let next_line = lines.next();
@@ -45,7 +45,7 @@ impl VNode for FsLineSource {
                     }
                 }
             } else {
-                let file = VFile::open(&self.path, VFileMode::Read)?;
+                let file = MxlFile::open(&self.path, MxlFileMode::Read)?;
                 let reader = io::BufReader::new(file);
                 let lines = reader.lines();
                 self.lines = Some(lines);

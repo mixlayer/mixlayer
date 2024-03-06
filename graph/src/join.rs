@@ -1,18 +1,18 @@
-use crate::graph::{VNode, VNodeCtx};
+use crate::graph::{MxlNode, MxlNodeCtx};
 use crate::Result;
-use crate::{Frame, VData, KV};
+use crate::{Frame, MxlData, KV};
 use std::marker::PhantomData;
 
 pub const LEFT_INPUT: u32 = 0;
 pub const RIGHT_INPUT: u32 = 1;
 
-pub trait VJoin: VNode {
-    type K: VData + PartialEq;
-    type LV: VData;
-    type RV: VData;
-    type Output: VData;
+pub trait VJoin: MxlNode {
+    type K: MxlData + PartialEq;
+    type LV: MxlData;
+    type RV: MxlData;
+    type Output: MxlData;
 
-    fn recv_left(&self, ctx: &mut VNodeCtx) -> Option<Frame<KV<Self::K, Self::LV>>> {
+    fn recv_left(&self, ctx: &mut MxlNodeCtx) -> Option<Frame<KV<Self::K, Self::LV>>> {
         if let Some(data) = ctx.recv(LEFT_INPUT) {
             Some(KV::from_buffer_frame(data))
         } else {
@@ -20,7 +20,7 @@ pub trait VJoin: VNode {
         }
     }
 
-    fn recv_right(&self, ctx: &mut VNodeCtx) -> Option<Frame<KV<Self::K, Self::RV>>> {
+    fn recv_right(&self, ctx: &mut MxlNodeCtx) -> Option<Frame<KV<Self::K, Self::RV>>> {
         if let Some(data) = ctx.recv(RIGHT_INPUT) {
             Some(KV::from_buffer_frame(data))
         } else {
@@ -28,23 +28,23 @@ pub trait VJoin: VNode {
         }
     }
 
-    fn send(&self, ctx: &mut VNodeCtx, data: Frame<Self::Output>) {
+    fn send(&self, ctx: &mut MxlNodeCtx, data: Frame<Self::Output>) {
         let data = data.flat_map(|d| d.into_buffer_frame().unwrap());
         ctx.send(0, data);
     }
 }
 
-pub struct VLeftJoin<K: VData, L: VData, R: VData> {
+pub struct MxlLeftJoin<K: MxlData, L: MxlData, R: MxlData> {
     _left: PhantomData<L>,
     right_buffer: Vec<KV<K, R>>,
     buffering: bool,
 }
 
-impl<K, L, R> VJoin for VLeftJoin<K, L, R>
+impl<K, L, R> VJoin for MxlLeftJoin<K, L, R>
 where
-    K: VData + PartialEq,
-    L: VData,
-    R: VData,
+    K: MxlData + PartialEq,
+    L: MxlData,
+    R: MxlData,
 {
     type K = K;
     type LV = L;
@@ -53,13 +53,13 @@ where
     type Output = KV<Self::K, KV<Self::LV, Self::RV>>;
 }
 
-impl<K, L, R> VNode for VLeftJoin<K, L, R>
+impl<K, L, R> MxlNode for MxlLeftJoin<K, L, R>
 where
-    K: VData + PartialEq,
-    L: VData,
-    R: VData,
+    K: MxlData + PartialEq,
+    L: MxlData,
+    R: MxlData,
 {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
+    fn tick(&mut self, ctx: &mut MxlNodeCtx) -> Result<()> {
         if self.buffering {
             match self.recv_right(ctx) {
                 Some(frame) => match frame {
@@ -95,11 +95,11 @@ where
     }
 }
 
-impl<K, L, R> VLeftJoin<K, L, R>
+impl<K, L, R> MxlLeftJoin<K, L, R>
 where
-    K: VData + PartialEq,
-    L: VData,
-    R: VData,
+    K: MxlData + PartialEq,
+    L: MxlData,
+    R: MxlData,
 {
     pub fn new() -> Self {
         Self {

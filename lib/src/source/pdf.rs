@@ -2,8 +2,8 @@ use std::{collections::VecDeque, path::Path};
 
 use crate::Result;
 use serde::{Deserialize, Serialize};
-use valence_data::{Frame, JsonVData};
-use valence_graph::{VNode, VNodeCtx, VSource};
+use valence_data::{Frame, JsonMxlData};
+use valence_graph::{MxlNode, MxlNodeCtx, MxlSource};
 use valence_runtime_ffi::{
     prost::Message,
     protos::{ReadPdfPagesPageText, ReadPdfPagesTextRequest, ReadPdfPagesTextResponse},
@@ -48,12 +48,12 @@ impl PdfPageTextSource {
     }
 }
 
-impl VSource for PdfPageTextSource {
+impl MxlSource for PdfPageTextSource {
     type Output = PdfPageText;
 }
 
-impl VNode for PdfPageTextSource {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
+impl MxlNode for PdfPageTextSource {
+    fn tick(&mut self, ctx: &mut MxlNodeCtx) -> Result<()> {
         if let Some(page) = self.pages.pop_front() {
             self.send(
                 ctx,
@@ -82,4 +82,4 @@ pub struct PdfPageText {
     pub text: String,
 }
 
-impl JsonVData for PdfPageText {}
+impl JsonMxlData for PdfPageText {}

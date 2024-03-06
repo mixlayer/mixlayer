@@ -6,14 +6,14 @@ mod channel;
 
 pub use channel::{InputChannel, OutputChannel};
 
-pub trait JsonVData:
+pub trait JsonMxlData:
     Serialize + DeserializeOwned + Debug + Clone + Sized + Sync + Send + 'static
 {
 }
 
-impl<T> VData for T
+impl<T> MxlData for T
 where
-    T: JsonVData,
+    T: JsonMxlData,
 {
     fn from_buffer_frame(frame: Frame<Bytes>) -> Frame<Self> {
         frame.map(|s| {
@@ -26,12 +26,12 @@ where
     }
 }
 
-pub trait VData: Debug + Clone + Sized + Sync + Send + 'static {
+pub trait MxlData: Debug + Clone + Sized + Sync + Send + 'static {
     fn from_buffer_frame(frame: Frame<Bytes>) -> Frame<Self>;
     fn into_buffer_frame(self) -> Result<Frame<Bytes>, ()>;
 }
 
-impl VData for String {
+impl MxlData for String {
     fn from_buffer_frame(frame: Frame<Bytes>) -> Frame<Self> {
         frame.map(|d| String::from_utf8(d.into()).unwrap()) //FIXME
     }
@@ -42,9 +42,9 @@ impl VData for String {
 }
 
 //FIXME in this impl, Some("") will be serialized as None, probably need a prefix byte
-impl<T> VData for Option<T>
+impl<T> MxlData for Option<T>
 where
-    T: VData,
+    T: MxlData,
 {
     fn from_buffer_frame(frame: Frame<Bytes>) -> Frame<Self> {
         match frame {
@@ -87,7 +87,7 @@ where
     }
 }
 
-impl VData for () {
+impl MxlData for () {
     fn from_buffer_frame(_frame: Frame<Bytes>) -> Frame<Self> {
         Frame::End
     }
@@ -97,7 +97,7 @@ impl VData for () {
     }
 }
 
-impl VData for u32 {
+impl MxlData for u32 {
     fn from_buffer_frame(frame: Frame<Bytes>) -> Frame<Self> {
         use bytes::Buf;
 
@@ -114,7 +114,7 @@ impl VData for u32 {
     }
 }
 
-impl<V: VData> VData for Vec<V> {
+impl<V: MxlData> MxlData for Vec<V> {
     fn from_buffer_frame(frame: Frame<Bytes>) -> Frame<Self> {
         use bytes::Buf;
 
@@ -163,9 +163,9 @@ impl<V: VData> VData for Vec<V> {
 }
 
 #[derive(Clone, Debug)]
-pub struct KV<K: VData + Debug, V: VData + Debug>(pub K, pub V);
+pub struct KV<K: MxlData + Debug, V: MxlData + Debug>(pub K, pub V);
 
-impl<K: VData + Debug, V: VData + Debug> KV<K, V> {
+impl<K: MxlData + Debug, V: MxlData + Debug> KV<K, V> {
     pub fn into_parts(self) -> (K, V) {
         (self.0, self.1)
     }
@@ -180,7 +180,7 @@ impl<K: VData + Debug, V: VData + Debug> KV<K, V> {
 }
 
 //TODO remove panics
-impl<K: VData, V: VData> VData for KV<K, V> {
+impl<K: MxlData, V: MxlData> MxlData for KV<K, V> {
     fn from_buffer_frame(frame: Frame<Bytes>) -> Frame<Self> {
         frame.map(|mut bs| {
             use bytes::Buf;
@@ -241,7 +241,7 @@ impl<K: VData, V: VData> VData for KV<K, V> {
 
 #[cfg(test)]
 mod test {
-    use super::{Frame, VData, KV};
+    use super::{Frame, MxlData, KV};
 
     #[test]
     fn kv_serialize() {
@@ -358,7 +358,7 @@ impl Frame<Bytes> {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(transparent)]
 pub struct JsonObject(serde_json::Map<String, serde_json::Value>);
-impl JsonVData for JsonObject {}
+impl JsonMxlData for JsonObject {}
 impl JsonObject {
     pub fn as_map(&self) -> &serde_json::Map<String, serde_json::Value> {
         &self.0
@@ -413,7 +413,7 @@ impl TryFrom<serde_json::Value> for JsonObject {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(transparent)]
 pub struct JsonValue(serde_json::Value);
-impl JsonVData for JsonValue {}
+impl JsonMxlData for JsonValue {}
 impl JsonValue {
     pub fn as_value(&self) -> &serde_json::Value {
         &self.0

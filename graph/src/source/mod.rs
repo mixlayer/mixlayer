@@ -1,12 +1,12 @@
 use std::collections::VecDeque;
 
-use crate::graph::{VNode, VNodeCtx};
-use crate::{Frame, Result, VData};
+use crate::graph::{MxlNode, MxlNodeCtx};
+use crate::{Frame, Result, MxlData};
 
-pub trait VSource: VNode {
-    type Output: VData;
+pub trait MxlSource: MxlNode {
+    type Output: MxlData;
 
-    fn send(&mut self, ctx: &mut VNodeCtx, data: Frame<Self::Output>) -> Result<()> {
+    fn send(&mut self, ctx: &mut MxlNodeCtx, data: Frame<Self::Output>) -> Result<()> {
         //FIXME remove unwrap
         let data = data.flat_map(|d| d.into_buffer_frame().unwrap());
         ctx.send(0, data);
@@ -14,17 +14,17 @@ pub trait VSource: VNode {
     }
 }
 
-pub struct VecSource<V: VData> {
+pub struct VecSource<V: MxlData> {
     data: VecDeque<V>,
     finished: bool,
 }
 
-impl<V: VData> VSource for VecSource<V> {
+impl<V: MxlData> MxlSource for VecSource<V> {
     type Output = V;
 }
 
-impl<V: VData> VNode for VecSource<V> {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
+impl<V: MxlData> MxlNode for VecSource<V> {
+    fn tick(&mut self, ctx: &mut MxlNodeCtx) -> Result<()> {
         if !self.finished {
             if let Some(next) = self.data.pop_back() {
                 self.send(ctx, Frame::Data(next))?;
@@ -38,7 +38,7 @@ impl<V: VData> VNode for VecSource<V> {
     }
 }
 
-impl<V: VData> VecSource<V> {
+impl<V: MxlData> VecSource<V> {
     pub fn new(data: Vec<V>) -> Self {
         Self {
             data: data.into(),
@@ -47,6 +47,6 @@ impl<V: VData> VecSource<V> {
     }
 }
 
-pub fn vec_source<V: VData>(data: Vec<V>) -> VecSource<V> {
+pub fn vec_source<V: MxlData>(data: Vec<V>) -> VecSource<V> {
     VecSource::new(data)
 }

@@ -1,12 +1,12 @@
 use std::marker::PhantomData;
 
-use super::VTransform;
-use crate::{graph::VNode, Frame, Result, VData};
+use super::MxlTransform;
+use crate::{graph::MxlNode, Frame, Result, MxlData};
 
 pub struct MapXform<I, O, F>
 where
-    I: VData,
-    O: VData,
+    I: MxlData,
+    O: MxlData,
     F: Fn(I) -> O,
 {
     func: F,
@@ -16,8 +16,8 @@ where
 
 impl<I, O, F> MapXform<I, O, F>
 where
-    I: VData,
-    O: VData,
+    I: MxlData,
+    O: MxlData,
     F: Fn(I) -> O,
 {
     pub fn new(func: F) -> Self {
@@ -29,23 +29,23 @@ where
     }
 }
 
-impl<I, O, F> VTransform for MapXform<I, O, F>
+impl<I, O, F> MxlTransform for MapXform<I, O, F>
 where
-    I: VData,
-    O: VData,
+    I: MxlData,
+    O: MxlData,
     F: Fn(I) -> O,
 {
     type Input = I;
     type Output = O;
 }
 
-impl<I, O, F> VNode for MapXform<I, O, F>
+impl<I, O, F> MxlNode for MapXform<I, O, F>
 where
-    I: VData,
-    O: VData,
+    I: MxlData,
+    O: MxlData,
     F: Fn(I) -> O,
 {
-    fn tick(&mut self, ctx: &mut crate::graph::VNodeCtx) -> Result<()> {
+    fn tick(&mut self, ctx: &mut crate::graph::MxlNodeCtx) -> Result<()> {
         if let Some(next) = self.recv(ctx) {
             match next {
                 Frame::Data(data) => self.send(ctx, Frame::Data((self.func)(data)))?,
@@ -67,8 +67,8 @@ where
 
 pub struct TryMapXform<I, O, F>
 where
-    I: VData,
-    O: VData,
+    I: MxlData,
+    O: MxlData,
     F: Fn(I) -> Result<O>,
 {
     func: F,
@@ -78,8 +78,8 @@ where
 
 impl<I, O, F> TryMapXform<I, O, F>
 where
-    I: VData,
-    O: VData,
+    I: MxlData,
+    O: MxlData,
     F: Fn(I) -> Result<O>,
 {
     pub fn new(func: F) -> Self {
@@ -91,23 +91,23 @@ where
     }
 }
 
-impl<I, O, F> VTransform for TryMapXform<I, O, F>
+impl<I, O, F> MxlTransform for TryMapXform<I, O, F>
 where
-    I: VData,
-    O: VData,
+    I: MxlData,
+    O: MxlData,
     F: Fn(I) -> Result<O>,
 {
     type Input = I;
     type Output = O;
 }
 
-impl<I, O, F> VNode for TryMapXform<I, O, F>
+impl<I, O, F> MxlNode for TryMapXform<I, O, F>
 where
-    I: VData,
-    O: VData,
+    I: MxlData,
+    O: MxlData,
     F: Fn(I) -> Result<O>,
 {
-    fn tick(&mut self, ctx: &mut crate::graph::VNodeCtx) -> Result<()> {
+    fn tick(&mut self, ctx: &mut crate::graph::MxlNodeCtx) -> Result<()> {
         if let Some(next) = self.recv(ctx) {
             match next {
                 crate::Frame::Data(data) => self.send(ctx, Frame::Data((self.func)(data)?))?,

@@ -1,6 +1,6 @@
 use log::debug;
 use valence_data::{Frame, JsonObject};
-use valence_graph::{VNode, VNodeCtx, VSink};
+use valence_graph::{MxlNode, MxlNodeCtx, MxlSink};
 use valence_runtime_ffi::{
     prost::Message,
     protos::{
@@ -211,8 +211,8 @@ impl MxlCollectionSink {
     }
 }
 
-impl VNode for MxlCollectionSink {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
+impl MxlNode for MxlCollectionSink {
+    fn tick(&mut self, ctx: &mut MxlNodeCtx) -> Result<()> {
         let next = self.recv(ctx);
 
         match &next {
@@ -265,6 +265,6 @@ impl VNode for MxlCollectionSink {
 //     }
 // }
 
-impl VSink for MxlCollectionSink {
+impl MxlSink for MxlCollectionSink {
     type Input = JsonObject;
 }

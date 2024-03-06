@@ -1,11 +1,11 @@
 use valence::Result;
-use valence::VGraph;
+use valence::MxlGraph;
 use valence_macros::builder;
 
 #[test]
 fn test() {
     #[builder]
-    fn main() -> Result<valence::VGraph> {
-        Ok(VGraph::new())
+    fn main() -> Result<valence::MxlGraph> {
+        Ok(MxlGraph::new())
     }
 }

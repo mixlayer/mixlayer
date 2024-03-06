@@ -1,18 +1,18 @@
 use std::marker::PhantomData;
 
-use super::VTransform;
-use crate::{graph::VNode, Frame, Result, VData};
+use super::MxlTransform;
+use crate::{graph::MxlNode, Frame, Result, MxlData};
 
 pub struct FlattenXform<I>
 where
-    I: VData,
+    I: MxlData,
 {
     _i: PhantomData<I>,
 }
 
 impl<I> FlattenXform<I>
 where
-    I: VData,
+    I: MxlData,
 {
     pub fn new() -> Self {
         FlattenXform {
@@ -21,19 +21,19 @@ where
     }
 }
 
-impl<I> VTransform for FlattenXform<I>
+impl<I> MxlTransform for FlattenXform<I>
 where
-    I: VData,
+    I: MxlData,
 {
     type Input = Vec<I>;
     type Output = I;
 }
 
-impl<I> VNode for FlattenXform<I>
+impl<I> MxlNode for FlattenXform<I>
 where
-    I: VData,
+    I: MxlData,
 {
-    fn tick(&mut self, ctx: &mut crate::graph::VNodeCtx) -> Result<()> {
+    fn tick(&mut self, ctx: &mut crate::graph::MxlNodeCtx) -> Result<()> {
         if let Some(next) = self.recv(ctx) {
             match next {
                 crate::Frame::Data(data) => {

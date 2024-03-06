@@ -11,10 +11,10 @@ pub use valence_graph as graph;
 pub use valence_runtime_ffi::{ByteBuffer, FFIMessage};
 
 pub use graph::{
-    Frame, Input, InputChannel, Output, OutputChannel, VEdge, VGraph, VNodeId, VNodeRef, VNodeType,
+    Frame, Input, InputChannel, Output, OutputChannel, MxlEdge, MxlGraph, MxlNodeId, MxlNodeRef, MxlNodeType,
 };
 
-pub use valence_data::{JsonObject, JsonVData, JsonValue};
+pub use valence_data::{JsonObject, JsonMxlData, JsonValue};
 pub use valence_macros::builder;
 
 pub use anyhow::Result;
@@ -123,14 +123,14 @@ impl InputChannel for FFIEdgeChannel {
 }
 
 #[no_mangle]
-extern "C" fn _valence_tick_node(graph: *mut VGraph, node_id: u32) -> () {
+extern "C" fn _valence_tick_node(graph: *mut MxlGraph, node_id: u32) -> () {
     let graph = unsafe { Box::leak(Box::from_raw(graph)) };
 
     let inputs = inputs_for_node(&graph, &node_id);
     let outputs = outputs_for_node(&graph, &node_id);
 
     if let Some(node) = graph.node_mut(&node_id) {
-        let mut ctx = graph::VNodeCtx::new();
+        let mut ctx = graph::MxlNodeCtx::new();
 
         ctx.inputs = inputs;
         ctx.outputs = outputs;
@@ -145,7 +145,7 @@ extern "C" fn _valence_tick_node(graph: *mut VGraph, node_id: u32) -> () {
     }
 }
 
-fn to_edge_proto(ed: &VEdge) -> VEdgeProto {
+fn to_edge_proto(ed: &MxlEdge) -> VEdgeProto {
     protos::VEdgeProto {
         source_node_id: ed.source_node_id,
         source_output_port: ed.source_port as u32,
@@ -156,14 +156,14 @@ fn to_edge_proto(ed: &VEdge) -> VEdgeProto {
 
 /// allows the runtime to free a graph so the Drop traits run on all of the nodes
 #[no_mangle]
-extern "C" fn _valence_free_graph(graph: *mut VGraph) -> () {
+extern "C" fn _valence_free_graph(graph: *mut MxlGraph) -> () {
     unsafe {
         drop(Box::from_raw(graph));
     }
 }
 
 #[no_mangle]
-extern "C" fn _valence_export_graph(graph: *mut VGraph) -> *const ByteBuffer {
+extern "C" fn _valence_export_graph(graph: *mut MxlGraph) -> *const ByteBuffer {
     let graph = unsafe { graph.as_ref().unwrap() };
 
     let edges: Vec<protos::VEdgeProto> = graph
@@ -182,9 +182,9 @@ extern "C" fn _valence_export_graph(graph: *mut VGraph) -> *const ByteBuffer {
             let metadata = graph.node_metadata(&node_id).unwrap();
 
             let node_type = match metadata.node_type {
-                VNodeType::Source => VNodeTypeProto::NodeTypeSource,
-                VNodeType::Transform => VNodeTypeProto::NodeTypeTransform,
-                VNodeType::Sink => VNodeTypeProto::NodeTypeSink,
+                MxlNodeType::Source => VNodeTypeProto::NodeTypeSource,
+                MxlNodeType::Transform => VNodeTypeProto::NodeTypeTransform,
+                MxlNodeType::Sink => VNodeTypeProto::NodeTypeSink,
                 _ => VNodeTypeProto::NodeTypeUnknown,
             };
 
@@ -210,12 +210,12 @@ extern "C" fn _valence_export_graph(graph: *mut VGraph) -> *const ByteBuffer {
     &buf
 }
 
-pub fn edge_channel(edge: &VEdge) -> FFIEdgeChannel {
+pub fn edge_channel(edge: &MxlEdge) -> FFIEdgeChannel {
     let edge = to_edge_proto(edge);
     FFIEdgeChannel { edge }
 }
 
-fn inputs_for_node(graph: &VGraph, node_id: &VNodeId) -> HashMap<u32, Input> {
+fn inputs_for_node(graph: &MxlGraph, node_id: &MxlNodeId) -> HashMap<u32, Input> {
     let upstream_edges = graph.upstream_edges(node_id);
 
     let mut inputs: HashMap<u32, Vec<Box<dyn InputChannel>>> = HashMap::new();
@@ -231,7 +231,7 @@ fn inputs_for_node(graph: &VGraph, node_id: &VNodeId) -> HashMap<u32, Input> {
         .collect()
 }
 
-fn outputs_for_node(graph: &VGraph, node_id: &VNodeId) -> HashMap<u32, Output> {
+fn outputs_for_node(graph: &MxlGraph, node_id: &MxlNodeId) -> HashMap<u32, Output> {
     let downstream_edges = graph.downstream_edges(node_id);
 
     let mut outputs: HashMap<u32, Vec<Box<dyn OutputChannel>>> = HashMap::new();

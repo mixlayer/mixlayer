@@ -7,12 +7,12 @@ pub mod sink;
 pub mod source;
 pub mod transform;
 
-pub use graph::{Input, Output, VEdge, VGraph, VNode, VNodeCtx, VNodeId, VNodeRef, VNodeType};
-pub use join::VLeftJoin;
-pub use sink::VSink;
-pub use source::VSource;
-pub use transform::VTransform;
-pub use valence_data::{Frame, VData, KV};
+pub use graph::{Input, Output, MxlEdge, MxlGraph, MxlNode, MxlNodeCtx, MxlNodeId, MxlNodeRef, MxlNodeType};
+pub use join::MxlLeftJoin;
+pub use sink::MxlSink;
+pub use source::MxlSource;
+pub use transform::MxlTransform;
+pub use valence_data::{Frame, MxlData, KV};
 pub use valence_data::{InputChannel, OutputChannel};
 
 pub use anyhow::{Context, Result};

@@ -1,11 +1,11 @@
 use std::marker::PhantomData;
 
-use super::VTransform;
-use crate::{graph::VNode, Frame, Result, VData, VNodeCtx};
+use super::MxlTransform;
+use crate::{graph::MxlNode, Frame, Result, MxlData, MxlNodeCtx};
 
 pub struct CollectXform<I>
 where
-    I: VData,
+    I: MxlData,
 {
     buf: Vec<I>,
     _i: PhantomData<I>,
@@ -13,7 +13,7 @@ where
 
 impl<I> CollectXform<I>
 where
-    I: VData,
+    I: MxlData,
 {
     pub fn new() -> Self {
         CollectXform {
@@ -23,19 +23,19 @@ where
     }
 }
 
-impl<I> VTransform for CollectXform<I>
+impl<I> MxlTransform for CollectXform<I>
 where
-    I: VData,
+    I: MxlData,
 {
     type Input = I;
     type Output = Vec<I>;
 }
 
-impl<I> VNode for CollectXform<I>
+impl<I> MxlNode for CollectXform<I>
 where
-    I: VData,
+    I: MxlData,
 {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
+    fn tick(&mut self, ctx: &mut MxlNodeCtx) -> Result<()> {
         if let Some(next) = self.recv(ctx) {
             match next {
                 crate::Frame::Data(data) => {

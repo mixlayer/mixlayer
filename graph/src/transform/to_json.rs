@@ -3,19 +3,19 @@ use std::marker::PhantomData;
 use serde::Serialize;
 use valence_data::JsonObject;
 
-use super::VTransform;
-use crate::{graph::VNode, Frame, Result, VData};
+use super::MxlTransform;
+use crate::{graph::MxlNode, Frame, Result, MxlData};
 
 pub struct ToJsonXform<I>
 where
-    I: VData + Serialize,
+    I: MxlData + Serialize,
 {
     _i: PhantomData<I>,
 }
 
 impl<I> ToJsonXform<I>
 where
-    I: VData + Serialize,
+    I: MxlData + Serialize,
 {
     pub fn new() -> Self {
         ToJsonXform {
@@ -24,19 +24,19 @@ where
     }
 }
 
-impl<I> VTransform for ToJsonXform<I>
+impl<I> MxlTransform for ToJsonXform<I>
 where
-    I: VData + Serialize,
+    I: MxlData + Serialize,
 {
     type Input = I;
     type Output = JsonObject;
 }
 
-impl<I> VNode for ToJsonXform<I>
+impl<I> MxlNode for ToJsonXform<I>
 where
-    I: VData + Serialize,
+    I: MxlData + Serialize,
 {
-    fn tick(&mut self, ctx: &mut crate::graph::VNodeCtx) -> Result<()> {
+    fn tick(&mut self, ctx: &mut crate::graph::MxlNodeCtx) -> Result<()> {
         if let Some(next) = self.recv(ctx) {
             match next {
                 crate::Frame::Data(data) => {

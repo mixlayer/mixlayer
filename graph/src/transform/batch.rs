@@ -1,12 +1,12 @@
 use std::mem;
 
-use crate::{graph::VNode, Frame, Result, VData, VNodeCtx, VTransform};
+use crate::{graph::MxlNode, Frame, Result, MxlData, MxlNodeCtx, MxlTransform};
 
 /// Transforms that accumulates inputs into a batch and
 /// then sends the batch to downstream nodes for processing
 pub struct BatchXform<I>
 where
-    I: VData,
+    I: MxlData,
 {
     batch_size: usize,
     cur_batch: Vec<I>,
@@ -14,7 +14,7 @@ where
 
 impl<I> BatchXform<I>
 where
-    I: VData,
+    I: MxlData,
 {
     pub fn new(batch_size: usize) -> Self {
         Self {
@@ -23,7 +23,7 @@ where
         }
     }
 
-    fn send_batch(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
+    fn send_batch(&mut self, ctx: &mut MxlNodeCtx) -> Result<()> {
         if !self.cur_batch.is_empty() {
             let batch_to_send =
                 mem::replace(&mut self.cur_batch, Vec::with_capacity(self.batch_size));
@@ -34,11 +34,11 @@ where
     }
 }
 
-impl<I> VNode for BatchXform<I>
+impl<I> MxlNode for BatchXform<I>
 where
-    I: VData,
+    I: MxlData,
 {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
+    fn tick(&mut self, ctx: &mut MxlNodeCtx) -> Result<()> {
         if ctx.recv_finished() {
             self.send_batch(ctx)?;
             self.send(ctx, Frame::End)?;
@@ -62,9 +62,9 @@ where
     }
 }
 
-impl<I> VTransform for BatchXform<I>
+impl<I> MxlTransform for BatchXform<I>
 where
-    I: VData,
+    I: MxlData,
 {
     type Input = I;
     type Output = Vec<I>;

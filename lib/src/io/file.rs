@@ -12,18 +12,18 @@ extern "C" {
     fn _valence_file_write(handle: i32, buf: *const ByteBuffer) -> i32;
 }
 
-pub struct VFile {
+pub struct MxlFile {
     handle: i32,
 }
 
-pub enum VFileMode {
+pub enum MxlFileMode {
     Unknown = 0,
     Read = 1,
     Write = 2,
 }
 
-impl VFile {
-    pub fn open<P: AsRef<Path>>(path: P, mode: VFileMode) -> Result<Self> {
+impl MxlFile {
+    pub fn open<P: AsRef<Path>>(path: P, mode: MxlFileMode) -> Result<Self> {
         let path = path.as_ref();
 
         if path.is_absolute() {
@@ -46,13 +46,13 @@ impl VFile {
     }
 }
 
-impl Drop for VFile {
+impl Drop for MxlFile {
     fn drop(&mut self) {
         unsafe { _valence_file_close(self.handle) };
     }
 }
 
-impl Write for VFile {
+impl Write for MxlFile {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let bb = ByteBuffer::from_slice(buf);
         let bytes_written = unsafe { _valence_file_write(self.handle, &bb) as usize };
@@ -64,7 +64,7 @@ impl Write for VFile {
     }
 }
 
-impl Read for VFile {
+impl Read for MxlFile {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         let bb = ByteBuffer::from_slice(buf);
         let bytes_read = unsafe { _valence_file_read(self.handle, &bb) as usize };

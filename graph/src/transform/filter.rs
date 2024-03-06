@@ -1,11 +1,11 @@
 use std::marker::PhantomData;
 
-use super::VTransform;
-use crate::{graph::VNode, Frame, Result, VData};
+use super::MxlTransform;
+use crate::{graph::MxlNode, Frame, Result, MxlData};
 
 pub struct FilterXform<I, F>
 where
-    I: VData,
+    I: MxlData,
     F: Fn(&I) -> bool,
 {
     func: F,
@@ -14,7 +14,7 @@ where
 
 impl<I, F> FilterXform<I, F>
 where
-    I: VData,
+    I: MxlData,
     F: Fn(&I) -> bool,
 {
     pub fn new(func: F) -> Self {
@@ -25,21 +25,21 @@ where
     }
 }
 
-impl<I, F> VTransform for FilterXform<I, F>
+impl<I, F> MxlTransform for FilterXform<I, F>
 where
-    I: VData,
+    I: MxlData,
     F: Fn(&I) -> bool,
 {
     type Input = I;
     type Output = I;
 }
 
-impl<I, F> VNode for FilterXform<I, F>
+impl<I, F> MxlNode for FilterXform<I, F>
 where
-    I: VData,
+    I: MxlData,
     F: Fn(&I) -> bool,
 {
-    fn tick(&mut self, ctx: &mut crate::graph::VNodeCtx) -> Result<()> {
+    fn tick(&mut self, ctx: &mut crate::graph::MxlNodeCtx) -> Result<()> {
         if let Some(next) = self.recv(ctx) {
             match next {
                 crate::Frame::Data(data) => {

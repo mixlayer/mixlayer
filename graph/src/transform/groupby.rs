@@ -2,16 +2,16 @@ use std::collections::HashMap;
 use std::hash::Hash;
 
 use crate::{
-    graph::{VNode, VNodeCtx},
-    Frame, Result, VData, KV,
+    graph::{MxlNode, MxlNodeCtx},
+    Frame, Result, MxlData, KV,
 };
 
-use super::VTransform;
+use super::MxlTransform;
 
 pub struct GroupByKey<K, V>
 where
-    K: VData + Eq + Hash,
-    V: VData,
+    K: MxlData + Eq + Hash,
+    V: MxlData,
 {
     buffer: Option<HashMap<K, Vec<V>>>, //FIXME introduce a state enum to get rid of panics in tick logic
     buffering: bool,
@@ -19,8 +19,8 @@ where
 
 impl<K, V> GroupByKey<K, V>
 where
-    K: VData + Eq + Hash,
-    V: VData,
+    K: MxlData + Eq + Hash,
+    V: MxlData,
 {
     pub(crate) fn new() -> Self {
         Self {
@@ -30,21 +30,21 @@ where
     }
 }
 
-impl<K, V> VTransform for GroupByKey<K, V>
+impl<K, V> MxlTransform for GroupByKey<K, V>
 where
-    K: VData + Eq + Hash,
-    V: VData,
+    K: MxlData + Eq + Hash,
+    V: MxlData,
 {
     type Input = KV<K, V>;
     type Output = KV<K, Vec<V>>;
 }
 
-impl<K, V> VNode for GroupByKey<K, V>
+impl<K, V> MxlNode for GroupByKey<K, V>
 where
-    K: VData + Eq + Hash,
-    V: VData,
+    K: MxlData + Eq + Hash,
+    V: MxlData,
 {
-    fn tick(&mut self, ctx: &mut VNodeCtx) -> Result<()> {
+    fn tick(&mut self, ctx: &mut MxlNodeCtx) -> Result<()> {
         if self.buffering {
             if let Some(frame) = self.recv(ctx) {
                 match frame {
