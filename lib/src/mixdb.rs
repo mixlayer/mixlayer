@@ -197,13 +197,14 @@ impl MxlCollectionSink {
         }
 
         if self.search_index {
+            debug!("finalizing full text search index");
             let finish_proto = MixDbSearchFinishIndex {
                 collection: self.coll_name.clone(),
                 index_name: "default".to_owned(),
             };
 
             let finish_buf: ByteBuffer = finish_proto.encode_to_vec().into();
-            unsafe { _mixdb_finish_vector_index(&finish_buf) };
+            unsafe { _mixdb_search_index_finish(&finish_buf) };
         }
 
         Ok(())
