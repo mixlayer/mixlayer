@@ -62,8 +62,8 @@ fn is_mxlgraph(ty: &syn::Type) -> bool {
     match str_type.as_str() {
         "Result < MxlGraph >" => {}
         "Result < valence :: MxlGraph >" => {}
-        "valence :: Result < valence :: MxlGraph >" => {}
-        "valence :: Result < MxlGraph >" => {}
+        "mixlayer :: Result < mixlayer :: MxlGraph >" => {}
+        "mixlayer :: Result < MxlGraph >" => {}
         _ => return false,
     };
 

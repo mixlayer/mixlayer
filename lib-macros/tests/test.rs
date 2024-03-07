@@ -1,11 +1,10 @@
-use valence::Result;
-use valence::MxlGraph;
+use mixlayer::{MxlGraph, Result};
 use mixlayer_macros::builder;
 
 #[test]
 fn test() {
     #[builder]
-    fn main() -> Result<valence::MxlGraph> {
+    fn main() -> Result<MxlGraph> {
         Ok(MxlGraph::new())
     }
 }
