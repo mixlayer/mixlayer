@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 
-members = ["lib", "graph", "runtime", "runtime-ffi", "data", "lib-macros"]
+members = ["lib", "graph", "runtime-ffi", "data", "lib-macros"]
 
 [workspace.dependencies]
 anyhow = "1.0"
