@@ -6,8 +6,8 @@ use log::debug;
 use anyhow::Result;
 use std::fmt::Debug;
 use std::marker::PhantomData;
-use valence_data::Frame;
-use valence_graph::{MxlData, MxlNode, MxlNodeCtx, MxlSink};
+use mixlayer_data::Frame;
+use mixlayer_graph::{MxlData, MxlNode, MxlNodeCtx, MxlSink};
 
 pub struct DebugSink<V: Debug + MxlData> {
     _v: PhantomData<V>,

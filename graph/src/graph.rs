@@ -7,7 +7,7 @@ use anyhow::Result;
 use bytes::Bytes;
 use log::error;
 use serde::Serialize;
-use valence_data::JsonObject;
+use mixlayer_data::JsonObject;
 
 use crate::{
     transform, Frame, InputChannel, OutputChannel, MxlData, MxlLeftJoin, MxlSink, MxlSource, MxlTransform, KV,

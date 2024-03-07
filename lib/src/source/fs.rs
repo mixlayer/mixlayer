@@ -12,7 +12,7 @@ pub struct FsLineSource {
 
     path: PathBuf,
 
-    //TODO should be unnecessary beacuse node should not tick if edge is finished writing.
+    //TODO should be unnecessary because node should not tick if edge is finished writing.
     done: bool,
 }
 

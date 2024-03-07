@@ -7,20 +7,20 @@ pub mod sink;
 pub mod source;
 
 pub use http;
-pub use valence_graph as graph;
-pub use valence_runtime_ffi::{ByteBuffer, FFIMessage};
+pub use mixlayer_graph as graph;
+pub use mixlayer_runtime_ffi::{ByteBuffer, FFIMessage};
 
 pub use graph::{
     Frame, Input, InputChannel, Output, OutputChannel, MxlEdge, MxlGraph, MxlNodeId, MxlNodeRef, MxlNodeType,
 };
 
-pub use valence_data::{JsonObject, JsonMxlData, JsonValue};
-pub use valence_macros::builder;
+pub use mixlayer_data::{JsonObject, JsonMxlData, JsonValue};
+pub use mixlayer_macros::builder;
 
 pub use anyhow::Result;
 
 use log::error;
-use valence_runtime_ffi::protos::{self, VEdgeProto, VGraphProto, VNodeTypeProto};
+use mixlayer_runtime_ffi::protos::{self, VEdgeProto, VGraphProto, VNodeTypeProto};
 
 extern "C" {
     /// Logs a message on the WebAssembly host.
@@ -84,7 +84,7 @@ impl FFIEdgeChannel {
 }
 
 impl OutputChannel for FFIEdgeChannel {
-    fn send(&self, data: graph::Frame<valence_runtime_ffi::prost::bytes::Bytes>) -> () {
+    fn send(&self, data: graph::Frame<mixlayer_runtime_ffi::prost::bytes::Bytes>) -> () {
         let edge_buf: ByteBuffer = FFIMessage(&self.edge).try_into().unwrap();
         let frame_buf: ByteBuffer = data.into_bytes().into();
 
@@ -103,7 +103,7 @@ impl InputChannel for FFIEdgeChannel {
         todo!()
     }
 
-    fn recv(&self) -> Option<graph::Frame<valence_runtime_ffi::prost::bytes::Bytes>> {
+    fn recv(&self) -> Option<graph::Frame<mixlayer_runtime_ffi::prost::bytes::Bytes>> {
         let edge_buf: ByteBuffer = FFIMessage(&self.edge).try_into().unwrap();
         let frame_buf = unsafe {
             let buf = _valence_edge_channel_recv(&edge_buf);

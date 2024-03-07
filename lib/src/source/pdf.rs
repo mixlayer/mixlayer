@@ -2,9 +2,9 @@ use std::{collections::VecDeque, path::Path};
 
 use crate::Result;
 use serde::{Deserialize, Serialize};
-use valence_data::{Frame, JsonMxlData};
-use valence_graph::{MxlNode, MxlNodeCtx, MxlSource};
-use valence_runtime_ffi::{
+use mixlayer_data::{Frame, JsonMxlData};
+use mixlayer_graph::{MxlNode, MxlNodeCtx, MxlSource};
+use mixlayer_runtime_ffi::{
     prost::Message,
     protos::{ReadPdfPagesPageText, ReadPdfPagesTextRequest, ReadPdfPagesTextResponse},
     ByteBuffer,
@@ -15,7 +15,7 @@ extern "C" {
 }
 
 pub fn read_pdf_pages_text(
-    req: valence_runtime_ffi::protos::ReadPdfPagesTextRequest,
+    req: mixlayer_runtime_ffi::protos::ReadPdfPagesTextRequest,
 ) -> Result<ReadPdfPagesTextResponse> {
     let request_bytes: ByteBuffer = req.encode_to_vec().into();
     let response_bytes: Box<ByteBuffer> =
@@ -23,7 +23,7 @@ pub fn read_pdf_pages_text(
 
     let response_bytes = response_bytes.into_bytes();
 
-    Ok(valence_runtime_ffi::protos::ReadPdfPagesTextResponse::decode(response_bytes)?)
+    Ok(mixlayer_runtime_ffi::protos::ReadPdfPagesTextResponse::decode(response_bytes)?)
 }
 
 /// Reads lines from a file on the local filesystem

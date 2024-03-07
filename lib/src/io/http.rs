@@ -1,8 +1,8 @@
 use anyhow::Result;
 use http::HeaderMap;
-use valence_runtime_ffi::ByteBuffer;
+use mixlayer_runtime_ffi::ByteBuffer;
 
-use valence_runtime_ffi::protos::{
+use mixlayer_runtime_ffi::protos::{
     HttpHeaderProto, HttpMethodProto, HttpRequestProto, HttpResponseProto,
 };
 
@@ -66,7 +66,7 @@ impl VHttpClient {
     }
 
     pub fn send(&mut self, request: http::Request<Vec<u8>>) -> Result<http::Response<Vec<u8>>> {
-        use valence_runtime_ffi::prost::Message;
+        use mixlayer_runtime_ffi::prost::Message;
 
         let headers: Vec<HttpHeaderProto> = self
             .default_headers

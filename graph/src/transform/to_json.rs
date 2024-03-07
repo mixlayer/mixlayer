@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use serde::Serialize;
-use valence_data::JsonObject;
+use mixlayer_data::JsonObject;
 
 use super::MxlTransform;
 use crate::{graph::MxlNode, Frame, Result, MxlData};

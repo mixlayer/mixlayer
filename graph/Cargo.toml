@@ -1,12 +1,12 @@
 [package]
-name = "valence-graph"
+name = "mixlayer-graph"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 bytes = { workspace = true }
 serde = { workspace = true }
-valence-data = { path = "../data" }
+mixlayer-data = { path = "../data" }
 log = { workspace = true }
 serde_json = "1.0.108"
 anyhow.workspace = true

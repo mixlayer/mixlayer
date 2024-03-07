@@ -1,4 +1,4 @@
-use valence_runtime_ffi::protos::{
+use mixlayer_runtime_ffi::protos::{
     ChatCompletionModelProto, ChatCompletionRequest, CreateEmbeddingRequest, EmbeddingModelProto,
 };
 

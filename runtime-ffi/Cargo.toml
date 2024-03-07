@@ -1,5 +1,5 @@
 [package]
-name = "valence-runtime-ffi"
+name = "mixlayer-runtime-ffi"
 version = "0.1.0"
 edition = "2021"
 

@@ -12,7 +12,7 @@ pub use join::MxlLeftJoin;
 pub use sink::MxlSink;
 pub use source::MxlSource;
 pub use transform::MxlTransform;
-pub use valence_data::{Frame, MxlData, KV};
-pub use valence_data::{InputChannel, OutputChannel};
+pub use mixlayer_data::{Frame, MxlData, KV};
+pub use mixlayer_data::{InputChannel, OutputChannel};
 
 pub use anyhow::{Context, Result};

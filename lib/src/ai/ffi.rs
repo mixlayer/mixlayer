@@ -1,8 +1,8 @@
-use valence_runtime_ffi::prost::Message;
-use valence_runtime_ffi::protos::BatchChatCompletionResponse;
-use valence_runtime_ffi::protos::ChatCompletionResponse;
-use valence_runtime_ffi::protos::CreateEmbeddingRequest;
-use valence_runtime_ffi::protos::CreateEmbeddingResponse;
+use mixlayer_runtime_ffi::prost::Message;
+use mixlayer_runtime_ffi::protos::BatchChatCompletionResponse;
+use mixlayer_runtime_ffi::protos::ChatCompletionResponse;
+use mixlayer_runtime_ffi::protos::CreateEmbeddingRequest;
+use mixlayer_runtime_ffi::protos::CreateEmbeddingResponse;
 
 use crate::ByteBuffer;
 use crate::Result;
@@ -30,7 +30,7 @@ pub fn embedding_request(request: CreateEmbeddingRequest) -> Result<CreateEmbedd
 }
 
 pub fn chat_completion_request(
-    req: valence_runtime_ffi::protos::ChatCompletionRequest,
+    req: mixlayer_runtime_ffi::protos::ChatCompletionRequest,
 ) -> Result<String> {
     let request_bytes: ByteBuffer = req.encode_to_vec().into();
     let response_bytes: Box<ByteBuffer> =
@@ -42,7 +42,7 @@ pub fn chat_completion_request(
 }
 
 pub fn batch_chat_completion_request(
-    req: valence_runtime_ffi::protos::BatchChatCompletionRequest,
+    req: mixlayer_runtime_ffi::protos::BatchChatCompletionRequest,
 ) -> Result<Vec<String>> {
     let request_bytes: ByteBuffer = req.encode_to_vec().into();
     let response_bytes: Box<ByteBuffer> =

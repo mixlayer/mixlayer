@@ -1,5 +1,5 @@
 [package]
-name = "valence-macros"
+name = "mixlayer-macros"
 version = "0.1.0"
 edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -17,5 +17,5 @@ version = "1"
 version = "2.0"
 features = ["full"]
 
-[dev-dependencies.valence]
+[dev-dependencies.mixlayer]
 path = "../lib"

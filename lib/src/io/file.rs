@@ -3,7 +3,7 @@ use std::{
     io::{Read, Write},
     path::Path,
 };
-use valence_runtime_ffi::ByteBuffer;
+use mixlayer_runtime_ffi::ByteBuffer;
 
 extern "C" {
     fn _valence_file_open(path_buf: *const ByteBuffer, mode: i32) -> i32;
