@@ -20,9 +20,9 @@ pub fn builder(
             }
 
             match it.sig.output {
-                syn::ReturnType::Type(_, ty) if is_vgraph(ty.as_ref()) => {}
+                syn::ReturnType::Type(_, ty) if is_mxlgraph(ty.as_ref()) => {}
                 _ => {
-                    let msg = "valence::main must return a Result<VGraph>";
+                    let msg = "mixlayer::main must return a Result<MxlGraph>";
                     let error = syn::Error::new_spanned(&it.sig.ident, msg);
                     return token_stream_with_error(item2, error).into();
                 }
@@ -31,10 +31,10 @@ pub fn builder(
             //TODO just unwrapping Result<VGraph> for now, but return actual error to user in future
             let tokens = quote! {
                 #[no_mangle]
-                extern "C" fn _valence_app_init() -> *mut VGraph {
+                extern "C" fn _valence_app_init() -> *mut MxlGraph {
                     #item2
 
-                    let g: VGraph = main().unwrap();
+                    let g: MxlGraph = main().unwrap();
                     Box::into_raw(Box::new(g))
                 }
             };
@@ -52,7 +52,7 @@ fn token_stream_with_error(mut tokens: TokenStream, error: syn::Error) -> TokenS
     tokens
 }
 
-fn is_vgraph(ty: &syn::Type) -> bool {
+fn is_mxlgraph(ty: &syn::Type) -> bool {
     let str_type = ty.to_token_stream().to_string();
 
     // dbg!(&str_type);
@@ -60,10 +60,10 @@ fn is_vgraph(ty: &syn::Type) -> bool {
     //TODO this will break if the valence crate is aliased, tokio gets around this by letting you
     // define the alias in the macro args
     match str_type.as_str() {
-        "Result < VGraph >" => {}
-        "Result < valence :: VGraph >" => {}
-        "valence :: Result < valence :: VGraph >" => {}
-        "valence :: Result < VGraph >" => {}
+        "Result < MxlGraph >" => {}
+        "Result < valence :: MxlGraph >" => {}
+        "valence :: Result < valence :: MxlGraph >" => {}
+        "valence :: Result < MxlGraph >" => {}
         _ => return false,
     };
 
