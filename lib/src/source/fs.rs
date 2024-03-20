@@ -59,3 +59,38 @@ impl MxlNode for FsLineSource {
         Some(format!("{}", self.path.display()))
     }
 }
+
+/// Reads an entire file as a utf8 string and emits it as a frame
+pub struct FsStringSource {
+    path: Option<PathBuf>,
+}
+
+impl FsStringSource {
+    pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
+        Ok(Self {
+            path: Some(path.as_ref().to_owned()),
+        })
+    }
+}
+
+impl MxlSource for FsStringSource {
+    type Output = String;
+}
+
+impl MxlNode for FsStringSource {
+    fn tick(&mut self, ctx: &mut MxlNodeCtx) -> Result<()> {
+        if let Some(path) = self.path.take() {
+            let mut file = MxlFile::open(&path, MxlFileMode::Read)?;
+            let contents: String = std::io::read_to_string(&mut file)?;
+
+            self.send(ctx, Frame::Data(contents))?;
+            self.send(ctx, Frame::End)?;
+        }
+
+        Ok(())
+    }
+
+    fn default_label(&self) -> Option<String> {
+        self.path.as_ref().map(|path| format!("{}", path.display()))
+    }
+}
